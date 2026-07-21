@@ -1,0 +1,29 @@
+# Visual Studio
+.vs/
+.vscode/
+.idea/
+
+# Unreal Engine generated files
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# Visual Studio generated files
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+
+# Build files
+*.log
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Unreal crash data
+crashinfo--*

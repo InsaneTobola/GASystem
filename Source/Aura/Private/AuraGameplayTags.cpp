@@ -1,0 +1,147 @@
+// Copyright Druid Mechanics
+
+
+#include "AuraGameplayTags.h"
+#include "GameplayTagsManager.h"
+
+FAuraGameplayTags FAuraGameplayTags::GameplayTags;
+
+void FAuraGameplayTags::InitializeNativeGameplayTags()
+{
+	/*
+	 *Primary Attributes
+	 */
+	GameplayTags.Attributes_Primary_Fire = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Primary.Fire"), 
+		FString("Fire magic")
+		);
+	GameplayTags.Attributes_Primary_Water = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Primary.Water"), 
+		FString("Water magic")
+		);
+	GameplayTags.Attributes_Primary_Earth = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Primary.Earth"), 
+		FString("Earth magic")
+		);
+	GameplayTags.Attributes_Primary_Air = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Primary.Air"), 
+		FString("Air magic")
+		);
+	
+	/*
+	 *Secondary Attributes
+	 */
+	GameplayTags.Attributes_Secondary_DamageOnTime = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.DamageOnTime"), 
+		FString("Inreases Damage on time")
+		);
+	GameplayTags.Attributes_Secondary_Armor = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.Armor"), 
+		FString("Reduces damage taken, improves Block Chance")
+		);
+	GameplayTags.Attributes_Secondary_CriticalHitChance = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.CriticalHitChance"), 
+		FString("Improves crit hit Chance")
+		);
+	GameplayTags.Attributes_Secondary_CriticalHitDamage = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.CriticalHitDamage"), 
+		FString("Improves crit hit damage")
+		);
+	GameplayTags.Attributes_Secondary_CriticalHitResistance = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.CriticalHitResistance"), 
+		FString("Improves crit hit resistance")
+		);
+	GameplayTags.Attributes_Secondary_HealthRegeneration = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.HealthRegeneration"), 
+		FString("Increases health regen")
+		);
+	GameplayTags.Attributes_Secondary_ManaRegeneration = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.ManaRegeneration"), 
+		FString("Increases mana regen")
+		);
+	GameplayTags.Attributes_Secondary_Slow = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.Slow"), 
+		FString("Extends slow duration")
+		);
+	GameplayTags.Attributes_Secondary_Knockback = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.Knockback"), 
+		FString("Extends knockback distance")
+		);
+	GameplayTags.Attributes_Secondary_Stun = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.Stun"), 
+		FString("Extends stun duration")
+		);
+	GameplayTags.Attributes_Secondary_Speed = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.Speed"), 
+		FString("Increases movement speed")
+		);
+	GameplayTags.Attributes_Secondary_AreaOfEffect = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.AreaOfEffect"), 
+		FString("Increases the area of effect of AoE skills")
+		);
+	GameplayTags.Attributes_Secondary_MaxHealth = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.MaxHealth"), 
+		FString("Increases Max Health")
+		);
+	GameplayTags.Attributes_Secondary_MaxMana = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.MaxMana"), 
+		FString("Increases Max Mana")
+		);
+	
+	/*
+	 * Input Tags
+	 */
+	GameplayTags.InputTag_Q = UGameplayTagsManager::Get().AddNativeGameplayTag(
+	FName("InputTag.Q"), 
+FString("InputTag for button Q")
+	);
+	GameplayTags.InputTag_W = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("InputTag.W"), 
+	FString("InputTag for button W")
+		);
+	GameplayTags.InputTag_E = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("InputTag.E"), 
+	FString("InputTag for button E")
+		);
+	GameplayTags.InputTag_R = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("InputTag.R"), 
+	FString("InputTag for button R")
+		);
+	
+	/*
+	 * Input Tags Variant
+	 */
+	GameplayTags.InputTag_1 = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("InputTag.1"), 
+		FString("InputTag for button 1")
+		);
+	GameplayTags.InputTag_2 = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("InputTag.2"), 
+	FString("InputTag for button 2")
+		);
+	GameplayTags.InputTag_3 = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("InputTag.3"), 
+	FString("InputTag for button 3")
+		);
+	
+	
+	GameplayTags.InputTag_LMB = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("InputTag.LMB"), 
+	FString("InputTag for Left Mouse Button, confirmation of a skill roll")
+		);
+	GameplayTags.InputTag_RMB = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("InputTag.RMB"), 
+	FString("InputTag for Right Mouse Button, direction of travel")
+		);
+
+	
+	GameplayTags.Damage = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Damage"), 
+	FString("Damage")
+		);
+	GameplayTags.HitReact = UGameplayTagsManager::Get().AddNativeGameplayTag(
+			FName("HitReact"), 
+		FString("HitReact")
+			);
+}
+
