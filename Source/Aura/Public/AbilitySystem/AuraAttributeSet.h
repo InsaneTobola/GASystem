@@ -110,6 +110,10 @@ public:
 	FGameplayAttributeData Armor;
 	ATTRIBUTE_ACCESSORS(UAuraAttributeSet, Armor);
 	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Armor, Category = "Secondary Attributes")
+	FGameplayAttributeData ArmorPenetration;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet, ArmorPenetration); 
+	
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_CriticalHitChance, Category = "Secondary Attributes")
 	FGameplayAttributeData CriticalHitChance;
 	ATTRIBUTE_ACCESSORS(UAuraAttributeSet, CriticalHitChance);
@@ -179,6 +183,10 @@ public:
 	FGameplayAttributeData HitReact;
 	ATTRIBUTE_ACCESSORS(UAuraAttributeSet, HitReact);
 	
+	UPROPERTY(BlueprintReadOnly, Category = "Meta Attributes")
+	FGameplayAttributeData BlockChance;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet, BlockChance);
+	
 	UFUNCTION()
 	void OnRep_Health(const FGameplayAttributeData& OldHealth) const;
 	
@@ -214,6 +222,9 @@ public:
 	void OnRep_Armor(const FGameplayAttributeData& OldArmor) const;
 	
 	UFUNCTION()
+	void OnRep_ArmorPenetration(const FGameplayAttributeData& OldArmorPenetration) const;
+	
+	UFUNCTION()
 	void OnRep_CriticalHitChance(const FGameplayAttributeData& OldCriticalHitChance) const;
 	
 	UFUNCTION()
@@ -245,6 +256,9 @@ public:
 	
 	UFUNCTION()
 	void OnRep_MaxHealth(const FGameplayAttributeData& OldMaxHealth) const;
+	
+	UFUNCTION()
+	void OnRep_BlockChance(const FGameplayAttributeData& OldBlockChance) const;
 
 	
 private:
