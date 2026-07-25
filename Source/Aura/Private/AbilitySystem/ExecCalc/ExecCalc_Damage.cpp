@@ -3,6 +3,7 @@
 
 #include "AbilitySystem/ExecCalc/ExecCalc_Damage.h"
 #include "AbilitySystemComponent.h"
+#include "AuraAbilityTypes.h"
 #include "AuraGameplayTags.h"
 #include "AbilitySystem/AuraAbilitySystemLibrary.h"
 #include "AbilitySystem/AuraAttributeSet.h"
@@ -75,6 +76,12 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 	TargetBlockChance = FMath::Max<float>(TargetBlockChance, 0.f);
 	
 	const bool bBlocked = FMath::RandRange(0.f, 100.f) < TargetBlockChance;
+	
+	FGameplayEffectContextHandle EffectContextHandle = Spec.GetContext();
+	FGameplayEffectContext* Context = EffectContextHandle.Get();
+	FAuraGameplayEffectContext* AuraContext = static_cast<FAuraGameplayEffectContext*>(Context);
+	AuraContext->SetIsBlockedHit(bBlocked);
+	
 	// If Block, halve Damage
 	if (bBlocked)
 	{
@@ -115,31 +122,12 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 	const FRealCurve* CriticalHitResistanceCurve = CharacterClassInfo->DamageCalculationCoefficient->FindCurve(FName("CriticalHitResistance"), FString());
 	const float CriticalHitResistanceCoefficient = CriticalHitResistanceCurve->Eval(TargetCombatInterface->GetPlayerLevel());
 	
-	UE_LOG(LogTemp, Warning,
-	TEXT("SOURCE: %s | TARGET: %s"),
-	SourceAvatar ? *SourceAvatar->GetName() : TEXT("NULL"),
-	TargetAvatar ? *TargetAvatar->GetName() : TEXT("NULL")
-);
-	
 	const float EffectiveCriticalHitChance = FMath::Max(SourceCriticalHitChance - TargetCriticalHitResistance * CriticalHitResistanceCoefficient, 0.f);
-	
-	UE_LOG(LogTemp, Warning,
-	TEXT("SOURCE: %s | TARGET: %s"),
-	SourceAvatar ? *SourceAvatar->GetName() : TEXT("NULL"),
-	TargetAvatar ? *TargetAvatar->GetName() : TEXT("NULL")
-);
-	
 	const bool bCriticalHit = FMath::RandRange(0.f, 100.f) < EffectiveCriticalHitChance;
 	
-	UE_LOG(LogTemp, Warning,
-	TEXT("CRIT TEST | Chance: %f | Resistance: %f | EffectiveChance: %f | CritDamage: %f | bCriticalHit: %s"),
-	SourceCriticalHitChance,
-	TargetCriticalHitResistance,
-	EffectiveCriticalHitChance,
-	SourceCriticalHitDamage,
-	bCriticalHit ? TEXT("TRUE") : TEXT("FALSE")
-);
+	UAuraAbilitySystemLibrary::SetIsCriticalHit(EffectContextHandle, bCriticalHit);
 	
+	// Double damage
 	if (bCriticalHit)
 	{
 		Damage *= SourceCriticalHitDamage;
