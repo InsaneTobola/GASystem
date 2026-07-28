@@ -21,6 +21,11 @@ public:
 	FGameplayTag Attributes_Primary_Earth;
 	FGameplayTag Attributes_Primary_Air;
 	
+	FGameplayTag Damage_Fire;
+	FGameplayTag Damage_Water;
+	FGameplayTag Damage_Earth;
+	FGameplayTag Damage_Air;
+	
 	FGameplayTag Attributes_Secondary_DamageOnTime;
 	FGameplayTag Attributes_Secondary_Armor;
 	FGameplayTag Attributes_Secondary_CriticalHitChance;
@@ -36,6 +41,11 @@ public:
 	FGameplayTag Attributes_Secondary_MaxHealth;
 	FGameplayTag Attributes_Secondary_MaxMana;
 	
+	FGameplayTag Attributes_Resistance_Fire;
+	FGameplayTag Attributes_Resistance_Water;
+	FGameplayTag Attributes_Resistance_Earth;
+	FGameplayTag Attributes_Resistance_Air;
+	
 	FGameplayTag InputTag_Q;
 	FGameplayTag InputTag_W;
 	FGameplayTag InputTag_E;
@@ -47,10 +57,12 @@ public:
 	
 	FGameplayTag InputTag_LMB;
 	FGameplayTag InputTag_RMB;
-
 	
 	FGameplayTag Damage;
 	FGameplayTag HitReact;
+	
+	TMap<FGameplayTag, FGameplayTag> DamageTypesToResistances;
+	
 
 private:
 	static FAuraGameplayTags GameplayTags;

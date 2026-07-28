@@ -29,6 +29,56 @@ void FAuraGameplayTags::InitializeNativeGameplayTags()
 		);
 	
 	/*
+	 * Damage Type
+	 */
+	
+	GameplayTags.Damage_Fire = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Damage.Fire"), 
+		FString("Fire Damage Type")
+		);
+	GameplayTags.Damage_Water = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Damage.Water"), 
+		FString("Water Damage Type")
+		);
+	GameplayTags.Damage_Earth = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Damage.Earth"), 
+		FString("Earth Damage Type")
+		);
+	GameplayTags.Damage_Air = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Damage.Air"), 
+		FString("Air Damage Type")
+		);
+	
+	/*
+	 * Damage Resistances
+	 */
+	GameplayTags.Attributes_Resistance_Fire = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Resistance.Fire"), 
+		FString("Fire Resistance")
+		);
+	GameplayTags.Attributes_Resistance_Water = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Resistance.Water"), 
+		FString("Water Resistance")
+		);
+	GameplayTags.Attributes_Resistance_Earth = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Resistance.Earth"), 
+		FString("Earth Resistance")
+		);
+	GameplayTags.Attributes_Resistance_Air = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Resistance.Air"), 
+		FString("Air Resistance")
+		);
+	
+	/*
+	 * Map of Damage Types to Resistance
+	 */
+	
+	GameplayTags.DamageTypesToResistances.Add(GameplayTags.Damage_Fire, GameplayTags.Attributes_Resistance_Fire);
+	GameplayTags.DamageTypesToResistances.Add(GameplayTags.Damage_Water, GameplayTags.Attributes_Resistance_Water);
+	GameplayTags.DamageTypesToResistances.Add(GameplayTags.Damage_Earth, GameplayTags.Attributes_Resistance_Earth);
+	GameplayTags.DamageTypesToResistances.Add(GameplayTags.Damage_Air, GameplayTags.Attributes_Resistance_Air);
+	
+	/*
 	 *Secondary Attributes
 	 */
 	GameplayTags.Attributes_Secondary_DamageOnTime = UGameplayTagsManager::Get().AddNativeGameplayTag(
