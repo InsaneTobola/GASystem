@@ -83,7 +83,7 @@ void FAuraGameplayTags::InitializeNativeGameplayTags()
 	 */
 	GameplayTags.Attributes_Secondary_DamageOnTime = UGameplayTagsManager::Get().AddNativeGameplayTag(
 		FName("Attributes.Secondary.DamageOnTime"), 
-		FString("Inreases Damage on time")
+		FString("Increases Damage on time")
 		);
 	GameplayTags.Attributes_Secondary_Armor = UGameplayTagsManager::Get().AddNativeGameplayTag(
 		FName("Attributes.Secondary.Armor"), 
@@ -136,6 +136,16 @@ void FAuraGameplayTags::InitializeNativeGameplayTags()
 	GameplayTags.Attributes_Secondary_MaxMana = UGameplayTagsManager::Get().AddNativeGameplayTag(
 		FName("Attributes.Secondary.MaxMana"), 
 		FString("Increases Max Mana")
+		);
+	
+	GameplayTags.Attributes_Secondary_ArmorPenetration = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.ArmorPenetration"), 
+		FString("Increases ArmorPenetration")
+		);
+	
+	GameplayTags.Attributes_Secondary_BlockChance = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Attributes.Secondary.BlockChance"), 
+		FString("Increases BlockChance")
 		);
 	
 	/*

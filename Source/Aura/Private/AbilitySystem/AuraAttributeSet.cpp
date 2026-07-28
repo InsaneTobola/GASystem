@@ -10,7 +10,6 @@
 #include "AuraGameplayTags.h"
 #include "AbilitySystem/AuraAbilitySystemLibrary.h"
 #include "Interaction/CombatInterface.h"
-#include "Kismet/GameplayStatics.h"
 #include "Player/AuraPlayerController.h"
 
 UAuraAttributeSet::UAuraAttributeSet()
@@ -22,6 +21,13 @@ UAuraAttributeSet::UAuraAttributeSet()
 	TagsToAttributes.Add(GameplayTags.Attributes_Primary_Water, GetWaterAttribute);
 	TagsToAttributes.Add(GameplayTags.Attributes_Primary_Earth, GetEarthAttribute);
 	TagsToAttributes.Add(GameplayTags.Attributes_Primary_Air, GetAirAttribute);
+	
+	/* Resistance Attributes */
+	TagsToAttributes.Add(GameplayTags.Attributes_Resistance_Fire, GetFireAttribute);
+	TagsToAttributes.Add(GameplayTags.Attributes_Resistance_Water, GetWaterAttribute);
+	TagsToAttributes.Add(GameplayTags.Attributes_Resistance_Earth, GetEarthAttribute);
+	TagsToAttributes.Add(GameplayTags.Attributes_Resistance_Air, GetAirAttribute);
+	
 	
 	/* Secondary Attributes */
 	TagsToAttributes.Add(GameplayTags.Attributes_Secondary_CriticalHitChance, GetCriticalHitChanceAttribute);
@@ -52,6 +58,13 @@ void UAuraAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME_CONDITION_NOTIFY(UAuraAttributeSet, Earth, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UAuraAttributeSet, Air, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UAuraAttributeSet, Intelligence, COND_None, REPNOTIFY_Always);
+	
+	//Resistance Attributes
+	
+	DOREPLIFETIME_CONDITION_NOTIFY(UAuraAttributeSet, FireResistance, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UAuraAttributeSet, WaterResistance, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UAuraAttributeSet, EarthResistance, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UAuraAttributeSet, AirResistance, COND_None, REPNOTIFY_Always);
 	
 	//Secondary Attributes
 	DOREPLIFETIME_CONDITION_NOTIFY(UAuraAttributeSet, DamageOnTime, COND_None, REPNOTIFY_Always);
@@ -163,9 +176,6 @@ void UAuraAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 				TagContainer.AddTag(FAuraGameplayTags::Get().HitReact);
 				Props.TargetASC->TryActivateAbilitiesByTag(TagContainer);
 			}
-			
-			
-			
 			const bool bBlock = UAuraAbilitySystemLibrary::IsBlockedHit(Props.EffectContextHandle);
 			const bool bCriticalHit = UAuraAbilitySystemLibrary::IsCriticalHit(Props.EffectContextHandle);
 			ShowFloatingText(Props, LocalIncomingDamage, bBlock, bCriticalHit);
@@ -178,7 +188,7 @@ void UAuraAttributeSet::ShowFloatingText(const FEffectProperties& Props, float D
 {
 	if (Props.SourceCharacter != Props.TargetCharacter)
 	{
-		if (AAuraPlayerController* PC = Cast<AAuraPlayerController>(UGameplayStatics::GetPlayerController(Props.SourceCharacter, 0)))
+		if (AAuraPlayerController* PC = Cast<AAuraPlayerController>(Props.SourceCharacter->Controller))
 		{
 			PC->ShowDamageNumber(Damage, Props.TargetCharacter, bBlockedHit, bCriticalHit);
 		}
@@ -214,6 +224,26 @@ void UAuraAttributeSet::OnRep_Earth(const FGameplayAttributeData& OldEarth) cons
 void UAuraAttributeSet::OnRep_Air(const FGameplayAttributeData& OldAir) const
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UAuraAttributeSet, Air, OldAir);
+}
+
+void UAuraAttributeSet::OnRep_FireResistance(const FGameplayAttributeData& OldFireResistance) const
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UAuraAttributeSet, FireResistance, OldFireResistance);
+}
+
+void UAuraAttributeSet::OnRep_WaterResistance(const FGameplayAttributeData& OldWaterResistance) const
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UAuraAttributeSet, WaterResistance, OldWaterResistance);
+}
+
+void UAuraAttributeSet::OnRep_EarthResistance(const FGameplayAttributeData& OldEarthResistance) const
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UAuraAttributeSet, EarthResistance, OldEarthResistance);
+}
+
+void UAuraAttributeSet::OnRep_AirResistance(const FGameplayAttributeData& OldAirResistance) const
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UAuraAttributeSet, AirResistance, OldAirResistance);
 }
 
 void UAuraAttributeSet::OnRep_Intelligence(const FGameplayAttributeData& OldIntelligence) const

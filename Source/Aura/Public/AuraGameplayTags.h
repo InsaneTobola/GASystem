@@ -40,6 +40,8 @@ public:
 	FGameplayTag Attributes_Secondary_AreaOfEffect;
 	FGameplayTag Attributes_Secondary_MaxHealth;
 	FGameplayTag Attributes_Secondary_MaxMana;
+	FGameplayTag Attributes_Secondary_ArmorPenetration;
+	FGameplayTag Attributes_Secondary_BlockChance;
 	
 	FGameplayTag Attributes_Resistance_Fire;
 	FGameplayTag Attributes_Resistance_Water;

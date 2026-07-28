@@ -96,6 +96,25 @@ public:
 	ATTRIBUTE_ACCESSORS(UAuraAttributeSet, Intelligence);
 	
 	/*
+	 * Resistance Attributes
+	 */
+	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_FireResistance, Category = "Resistance Attributes")
+	FGameplayAttributeData FireResistance;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet, FireResistance)
+
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_WaterResistance, Category = "Resistance Attributes")
+	FGameplayAttributeData WaterResistance;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet, WaterResistance)
+	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_EarthResistance, Category = "Resistance Attributes")
+	FGameplayAttributeData EarthResistance;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet, EarthResistance)
+
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_AirResistance, Category = "Resistance Attributes")
+	FGameplayAttributeData AirResistance;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet, AirResistance)
+	/*
 	 * Secondary Attributes
 	 */
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_DamageOnTime, Category = "Secondary Attributes")
@@ -210,7 +229,17 @@ public:
 	UFUNCTION()
 	void OnRep_Intelligence(const FGameplayAttributeData& OldIntelligence) const;
 	
+	UFUNCTION()
+	void OnRep_FireResistance(const FGameplayAttributeData& OldFireResistance) const;
 	
+	UFUNCTION()
+	void OnRep_WaterResistance(const FGameplayAttributeData& OldWaterResistance) const;
+	
+	UFUNCTION()
+	void OnRep_EarthResistance(const FGameplayAttributeData& OldEarthResistance) const;
+	
+	UFUNCTION()
+	void OnRep_AirResistance(const FGameplayAttributeData& OldAirResistance) const;
 	
 	UFUNCTION()
 	void OnRep_DamageOnTime(const FGameplayAttributeData& OldDamageOnTime) const;

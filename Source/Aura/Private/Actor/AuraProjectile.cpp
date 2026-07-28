@@ -45,11 +45,15 @@ void AAuraProjectile::BeginPlay()
 
 void AAuraProjectile::Destroyed()
 {
+	UE_LOG(LogTemp, Warning, TEXT("Destroyed"));
+	
 	if (!bHit && !HasAuthority())
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Spawn Niagara"));
+
 		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation(), FRotator::ZeroRotator);
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ImpactEffect, GetActorLocation());
-		LoopingSoundComponent->Stop();
+		if (LoopingSoundComponent) LoopingSoundComponent->Stop();
 	}
 	Super::Destroyed();
 }
@@ -57,6 +61,9 @@ void AAuraProjectile::Destroyed()
 void AAuraProjectile::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                       UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	UE_LOG(LogTemp, Warning, TEXT("Overlap"));
+	UE_LOG(LogTemp, Warning, TEXT("Authority: %d"), HasAuthority());
+	
 	if (OtherActor == GetOwner() || OtherActor == GetInstigator()) return;
 	
 	if (!bHit && !HasAuthority())
