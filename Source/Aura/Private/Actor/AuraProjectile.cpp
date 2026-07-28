@@ -40,52 +40,65 @@ void AAuraProjectile::BeginPlay()
 	Sphere->OnComponentBeginOverlap.AddDynamic(this, &AAuraProjectile::OnSphereOverlap);
 	
 	LoopingSoundComponent = UGameplayStatics::SpawnSoundAttached(LoopingSound, GetRootComponent());
-	
 }
 
 void AAuraProjectile::Destroyed()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Destroyed"));
-	
-	if (!bHit && !HasAuthority())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Spawn Niagara"));
-
-		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation(), FRotator::ZeroRotator);
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ImpactEffect, GetActorLocation());
-		if (LoopingSoundComponent) LoopingSoundComponent->Stop();
-	}
 	Super::Destroyed();
 }
 
 void AAuraProjectile::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                       UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Overlap"));
-	UE_LOG(LogTemp, Warning, TEXT("Authority: %d"), HasAuthority());
-	
 	if (OtherActor == GetOwner() || OtherActor == GetInstigator()) return;
-	
-	if (!bHit && !HasAuthority())
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation(), FRotator::ZeroRotator);
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ImpactEffect, GetActorLocation());
-	}
+/*
 	if (IsValid(LoopingSoundComponent))
 	{
 		LoopingSoundComponent->Stop();
 	}
+*/
 	if (HasAuthority())
 	{
-		if (UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor))
+		MulticastPlayImpactEffects();
+
+		if (UAbilitySystemComponent* TargetASC =
+			UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor))
 		{
-			TargetASC->ApplyGameplayEffectSpecToSelf(*DamageEffectSpecHandle.Data.Get());
+			TargetASC->ApplyGameplayEffectSpecToSelf(
+				*DamageEffectSpecHandle.Data.Get());
 		}
+		
 		Destroy();
 	}
 	else
 	{
 		bHit = true;
+	}
+}
+
+void AAuraProjectile::MulticastPlayImpactEffects_Implementation()
+{
+	if (IsValid(LoopingSoundComponent))
+	{
+		LoopingSoundComponent->Stop();
+	}
+
+	if (ImpactSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			ImpactSound,
+			GetActorLocation(),
+			FRotator::ZeroRotator);
+	}
+
+	if (ImpactEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			this,
+			ImpactEffect,
+			GetActorLocation(),
+			GetActorRotation());
 	}
 }
 
