@@ -65,7 +65,28 @@ public:
 	
 	TMap<FGameplayTag, FGameplayTag> DamageTypesToResistances;
 	
-
+	FGameplayTag State_Idle;
+	FGameplayTag State_Rotate;
+	FGameplayTag State_StartChase;
+	FGameplayTag State_StopChase;
+	FGameplayTag State_Attack;
+	FGameplayTag State_Dead;
+	
+	FGameplayTag Event_PlayerDetected;
+	FGameplayTag Event_PlayerLost;
+	FGameplayTag Event_AttackFinished;
+	FGameplayTag Event_Hit;
+	FGameplayTag Event_TargetDead;
+	FGameplayTag Event_Knockback;
+	FGameplayTag Event_Knockup;
+	
+	FGameplayTag Status_Stun;
+	FGameplayTag Status_Slow;
+	FGameplayTag Status_Burn;
+	FGameplayTag Status_Frost;
+	
+	
+	
 private:
 	static FAuraGameplayTags GameplayTags;
 };

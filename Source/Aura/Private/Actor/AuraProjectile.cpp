@@ -56,7 +56,7 @@ void AAuraProjectile::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, 
 	{
 		LoopingSoundComponent->Stop();
 	}
-*/
+*/ 
 	if (HasAuthority())
 	{
 		MulticastPlayImpactEffects();

@@ -193,8 +193,10 @@ FString("InputTag for button Q")
 		FName("InputTag.RMB"), 
 	FString("InputTag for Right Mouse Button, direction of travel")
 		);
-
 	
+	/*
+	 * Reaction
+	 */
 	GameplayTags.Damage = UGameplayTagsManager::Get().AddNativeGameplayTag(
 		FName("Damage"), 
 	FString("Damage")
@@ -203,5 +205,86 @@ FString("InputTag for button Q")
 			FName("HitReact"), 
 		FString("HitReact")
 			);
+	
+	/*
+	 * State tree
+	 */
+	GameplayTags.State_Idle = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("State.Idle"), 
+	FString("Idle")
+		);
+	GameplayTags.State_Rotate = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("State.Rotate"), 
+	FString("Rotate")
+		);
+	GameplayTags.State_StartChase = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("State.StartChase"), 
+	FString("Start Chase")
+		);
+	GameplayTags.State_StopChase = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("State.StopChase"), 
+	FString("Stop Chase")
+		);
+	GameplayTags.State_Attack= UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("State.Attack"), 
+	FString("Attack")
+		);
+	GameplayTags.State_Dead = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("State.Dead"), 
+	FString("Dead")
+		);
+	
+	/*
+	 * Event Effect
+	 */
+	GameplayTags.Event_PlayerDetected = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Event.PlayerDetected"), 
+	FString("PlayerDetected")
+		);
+	GameplayTags.Event_PlayerLost = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Event.PlayerLost"), 
+	FString("PlayerLost")
+		);
+	GameplayTags.Event_AttackFinished = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Event.AttackFinished"), 
+	FString("AttackFinished")
+		);
+	GameplayTags.Event_Hit = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Event.Hit"), 
+	FString("Hit")
+		);
+	GameplayTags.Event_TargetDead = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Event.TargetDead"), 
+	FString("TargetDead")
+		);
+	GameplayTags.Event_Knockup = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Event.Knockup"), 
+	FString("Knockup")
+		);
+	GameplayTags.Event_Knockback = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Event.Knockback"), 
+	FString("Knockback")
+		);
+	
+	/*
+	 * Status Effect
+	 */
+	GameplayTags.Status_Stun = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Status.Stun"), 
+	FString("Stun")
+		);
+	GameplayTags.Status_Slow = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Status.Slow"), 
+	FString("Slow")
+		);
+	GameplayTags.Status_Burn= UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Status.Burn"), 
+	FString("Burn")
+		);
+	GameplayTags.Status_Frost = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Status.Frost"), 
+	FString("Frost")
+		);
+	
 }
 
