@@ -71,6 +71,7 @@ public:
 	FGameplayTag State_StopChase;
 	FGameplayTag State_Attack;
 	FGameplayTag State_Dead;
+	FGameplayTag State_StartCombat;
 	
 	FGameplayTag Event_PlayerDetected;
 	FGameplayTag Event_PlayerLost;

@@ -11,6 +11,7 @@
 class UAbilitySystemComponent;
 class UAttributeMenuWidgetController;
 class UOverlayWidgetController;
+class UCombatProfileInfo;
 /**
  * 
  */
@@ -46,5 +47,8 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "AuraAbilitySystemLibrary|GameplayEffects")
 	static void SetIsCriticalHit(UPARAM(ref) FGameplayEffectContextHandle& EffectContextHandle, bool bInIsCriticalHit);
+	
+	UFUNCTION(BlueprintCallable, Category = "AuraAbilitySystemLibrary|Combat")
+	static void GiveCombatAbilities(const UObject* WorldContextObject,UAbilitySystemComponent* ASC,UCombatProfileInfo* CombatProfile);
 	
 };

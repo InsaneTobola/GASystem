@@ -11,6 +11,7 @@
 
 
 class UWidgetComponent;
+class UCombatProfileInfo;
 /**
  * 
  */
@@ -48,6 +49,9 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	float LifeSpan = 5.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UCombatProfileInfo> CombatProfile;
 
 protected:
 	virtual void BeginPlay() override;

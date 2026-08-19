@@ -11,6 +11,8 @@
 #include "Player/AuraPlayerState.h"
 #include "UI/HUD/AuraHUD.h"
 #include "UI/WidgetController/AuraWidgetController.h"
+#include "Data/CombatProfileInfo.h"
+#include "Data/AttackDefinition.h"
 
 UOverlayWidgetController* UAuraAbilitySystemLibrary::GetOverlayWidgetController(const UObject* WorldContextObject)
 {
@@ -120,5 +122,31 @@ void UAuraAbilitySystemLibrary::SetIsCriticalHit(FGameplayEffectContextHandle& E
 	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get())) 
 	{
 		AuraEffectContext->SetIsCriticalHit(bInIsCriticalHit);
+	}
+}
+
+void UAuraAbilitySystemLibrary::GiveCombatAbilities(const UObject* WorldContextObject, UAbilitySystemComponent* ASC,
+	UCombatProfileInfo* CombatProfile)
+{
+	if (!ASC || !CombatProfile)
+	{
+		return;
+	}
+
+	for (const TObjectPtr<UAttackDefinition>& AttackDefinition : CombatProfile->Attacks)
+	{
+		if (!AttackDefinition)
+		{
+			continue;
+		}
+
+		if (!AttackDefinition->GameplayAbility)
+		{
+			continue;
+		}
+
+		FGameplayAbilitySpec AbilitySpec(AttackDefinition->GameplayAbility,1);
+
+		ASC->GiveAbility(AbilitySpec);
 	}
 }

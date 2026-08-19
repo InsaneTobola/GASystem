@@ -59,7 +59,13 @@ void AAuraEnemy::BeginPlay()
 	if (HasAuthority())
 	{
 		InitializeDefaultAttributes();
-		UAuraAbilitySystemLibrary::GiveStartupAbilities(this, AbilitySystemComponent);
+
+		UAuraAbilitySystemLibrary::GiveStartupAbilities(
+			this,
+			AbilitySystemComponent
+		);
+
+		UAuraAbilitySystemLibrary::GiveCombatAbilities(this, AbilitySystemComponent, CombatProfile);
 	}
 	
 	if (UAuraUserWidget* AuraUserWidget = Cast<UAuraUserWidget>(HealthBar->GetUserWidgetObject()))
@@ -90,6 +96,8 @@ void AAuraEnemy::BeginPlay()
 		OnHealthChanged.Broadcast(AuraAS->GetHealth());
 		OnMaxHealthChanged.Broadcast(AuraAS->GetMaxHealth());
 	}
+	
+	
 }
 void AAuraEnemy::HitReactTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
 {

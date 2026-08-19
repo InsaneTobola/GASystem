@@ -233,6 +233,10 @@ FString("InputTag for button Q")
 		FName("State.Dead"), 
 	FString("Dead")
 		);
+	GameplayTags.State_StartCombat = UGameplayTagsManager::Get().AddNativeGameplayTag(
+	FName("State.StartCombat"), 
+FString("StartCombat")
+	);
 	
 	/*
 	 * Event Effect
