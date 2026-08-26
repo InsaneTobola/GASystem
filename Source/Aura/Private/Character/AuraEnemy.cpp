@@ -2,6 +2,7 @@
 
 
 #include "Character/AuraEnemy.h"
+#include "Character/AuraCharacter.h"
 #include "Aura/Aura.h"
 #include "AbilitySystem/AuraAbilitySystemComponent.h"
 #include "AbilitySystem/AuraAbilitySystemLibrary.h"
@@ -10,10 +11,30 @@
 #include "UI/Widget/AuraUserWidget.h"
 #include "AuraGameplayTags.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Perception/AIPerceptionComponent.h"
+#include "Perception/AISenseConfig_Sight.h"
+#include "Perception/AIPerceptionTypes.h"
+#include "Components/StateTreeComponent.h"
+
 
 
 AAuraEnemy::AAuraEnemy()
 {
+	
+	AIPerception = CreateDefaultSubobject<UAIPerceptionComponent>("AIPerception");
+	SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>("SightConfig");
+	
+	SightConfig->SightRadius = SightRadius;
+	SightConfig->LoseSightRadius = LoseSightRadius;
+	SightConfig->PeripheralVisionAngleDegrees = PeripheralVisionAngle;
+
+	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
+	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
+	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
+
+	AIPerception->ConfigureSense(*SightConfig);
+	AIPerception->SetDominantSense(UAISense_Sight::StaticClass());
+	
 	GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	
 	AbilitySystemComponent = CreateDefaultSubobject<UAuraAbilitySystemComponent>("AbilitySystemComponent");
@@ -55,6 +76,11 @@ void AAuraEnemy::BeginPlay()
 	Super::BeginPlay();
 	GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 	InitAbilityActorInfo();
+
+	if (AIPerception)
+	{
+		AIPerception->OnTargetPerceptionUpdated.AddDynamic(this,&AAuraEnemy::OnTargetPerceptionUpdated);
+	}
 	
 	if (HasAuthority())
 	{
@@ -114,4 +140,52 @@ void AAuraEnemy::InitAbilityActorInfo()
 void AAuraEnemy::InitializeDefaultAttributes() const
 {
 	UAuraAbilitySystemLibrary::InitializeDefaultAttributes(this, CharacterClass, Level, AbilitySystemComponent);
+}
+
+
+
+void AAuraEnemy::OnTargetPerceptionUpdated(AActor* Actor,FAIStimulus Stimulus)
+{
+	if (!Actor)
+	{
+		return;
+	}
+
+	AAuraCharacter* Player = Cast<AAuraCharacter>(Actor);
+
+	if (!Player)
+	{
+		return;
+	}
+
+	if (Stimulus.WasSuccessfullySensed())
+	{
+		HandlePlayerDetected(Player);
+	}
+	else
+	{
+		HandlePlayerLost();
+	}
+	
+}
+
+void AAuraEnemy::HandlePlayerDetected(AActor* Player)
+{
+	if (!Player)
+	{
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(LoseSightTimerHandle);
+	
+}
+
+void AAuraEnemy::HandlePlayerLost()
+{
+	GetWorldTimerManager().SetTimer(LoseSightTimerHandle,this,&AAuraEnemy::ExecuteStopChase,LoseSightDelay,false);
+}
+
+void AAuraEnemy::ExecuteStopChase()
+{
+	OnPlayerLost();
 }
