@@ -99,15 +99,19 @@ void AAuraPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
 		if (FollowTime <= ShortPressThreshold && ControlledPawn)
 		{
 			if (UNavigationPath* NavPath = UNavigationSystemV1::FindPathToLocationSynchronously(this, ControlledPawn->GetActorLocation(), CachedDestination))
+	
 			{
-				Spline->ClearSplinePoints();
-				for (const FVector& PointLoc: NavPath->PathPoints)
+				if (NavPath->PathPoints.Num() > 0)
 				{
-					Spline->AddSplinePoint(PointLoc, ESplineCoordinateSpace::World);
-					DrawDebugSphere(GetWorld(), PointLoc, 8.f, 8, FColor::Green, false, 5.f);
+					Spline->ClearSplinePoints();
+					for (const FVector& PointLoc: NavPath->PathPoints)
+					{
+						Spline->AddSplinePoint(PointLoc, ESplineCoordinateSpace::World);
+						DrawDebugSphere(GetWorld(), PointLoc, 8.f, 8, FColor::Green, false, 5.f);
+					}
+					CachedDestination = NavPath->PathPoints[NavPath->PathPoints.Num() - 1];
+					bAutoRunning = true;
 				}
-				CachedDestination = NavPath->PathPoints[NavPath->PathPoints.Num() - 1];
-				bAutoRunning = true;
 			}
 		}
 		FollowTime = 0.f;

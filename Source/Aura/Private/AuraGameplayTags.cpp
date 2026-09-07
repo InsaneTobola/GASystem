@@ -137,12 +137,10 @@ void FAuraGameplayTags::InitializeNativeGameplayTags()
 		FName("Attributes.Secondary.MaxMana"), 
 		FString("Increases Max Mana")
 		);
-	
 	GameplayTags.Attributes_Secondary_ArmorPenetration = UGameplayTagsManager::Get().AddNativeGameplayTag(
 		FName("Attributes.Secondary.ArmorPenetration"), 
 		FString("Increases ArmorPenetration")
 		);
-	
 	GameplayTags.Attributes_Secondary_BlockChance = UGameplayTagsManager::Get().AddNativeGameplayTag(
 		FName("Attributes.Secondary.BlockChance"), 
 		FString("Increases BlockChance")
@@ -202,9 +200,9 @@ FString("InputTag for button Q")
 	FString("Damage")
 		);
 	GameplayTags.HitReact = UGameplayTagsManager::Get().AddNativeGameplayTag(
-			FName("HitReact"), 
+		FName("HitReact"), 
 		FString("HitReact")
-			);
+		);
 	
 	/*
 	 * State tree
@@ -236,7 +234,12 @@ FString("InputTag for button Q")
 	GameplayTags.State_StartCombat = UGameplayTagsManager::Get().AddNativeGameplayTag(
 	FName("State.StartCombat"), 
 FString("StartCombat")
-	);
+		);
+	GameplayTags.State_FinishedFacingTarget = UGameplayTagsManager::Get().AddNativeGameplayTag(
+	FName("State.FinishedFacingTarget"), 
+FString("FinishedFacingTarget")
+		);
+
 	
 	/*
 	 * Event Effect
