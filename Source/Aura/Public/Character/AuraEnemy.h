@@ -8,6 +8,7 @@
 #include "UI/WidgetController/OverlayWidgetController.h"
 #include "Data/CharacterClassInfo.h"
 #include "Perception/AIPerceptionTypes.h"
+#include "AI/AIAuraThreatTypes.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "AuraEnemy.generated.h"
 
@@ -69,8 +70,10 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	bool IsTargetInAttackRange() const;
-	
-	
+	void HandleDamageReceived(AActor* SourceActor);
+	AActor* GetCurrentTarget() const;
+	void HandlePlayerDetectedFromGroup(AActor* Player);
+
 	// ==========================================
 	// Chase 
 	// ==========================================
@@ -132,14 +135,46 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	float FacingTolerance = 5.f;
 	
+	// ==========================================
+	//Alert
+	// ==========================================
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "AI|Alert")
+	FName AlertGroupId;
 	
+	UFUNCTION(BlueprintCallable, Category = "AI|Alert")
+	void ReceiveThreatAlert(const FThreatAlert& Alert);
 
+	UFUNCTION(BlueprintCallable, Category = "AI|Alert")
+	void ResolvePendingThreat();
+	
+	UPROPERTY(BlueprintReadOnly, Category = "AI|Alert")
+	TObjectPtr<AActor> PendingThreatSource = nullptr;
+	
+	UPROPERTY(BlueprintReadOnly, Category= "AI|Alert")
+	TObjectPtr<AAuraEnemy> PendingThreatWitness = nullptr;
+
+	UPROPERTY(BlueprintReadOnly, Category = "AI|Alert")
+	FVector PendingThreatLocation = FVector::ZeroVector;
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "AI|StateTree")
+	void OnThreatAlertReceived();
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "AI|StateTree")
+	void OnThreatSearch();
+	
+	UFUNCTION(BlueprintCallable, Category = "AI|Alert")
+	void FaceThreatLocation();
+	
+	
+	bool bIsFacingThreatLocation = false;
+	
 protected:
 	// ==========================================
     // Lifecycle
     // ==========================================
 
     virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void InitAbilityActorInfo() override;
     virtual void InitializeDefaultAttributes() const override;
 
@@ -264,4 +299,7 @@ protected:
 
     UFUNCTION(BlueprintImplementableEvent, Category = "AI|StateTree")
     void OnFinishedFacingTarget();
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "AI|StateTree")
+	void OnFinishedFacingThreatLocation();
 };

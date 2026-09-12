@@ -9,8 +9,14 @@
 #include "Net/UnrealNetwork.h"
 #include "AuraGameplayTags.h"
 #include "AbilitySystem/AuraAbilitySystemLibrary.h"
+#include "AI/AIAuraThreatSubsystem.h"
+#include "AI/AIAuraThreatTypes.h"
+#include "Character/AuraEnemy.h"
 #include "Interaction/CombatInterface.h"
 #include "Player/AuraPlayerController.h"
+
+
+class UAuraThreatSubsystem;
 
 UAuraAttributeSet::UAuraAttributeSet()
 {
@@ -135,54 +141,103 @@ void UAuraAttributeSet::SetEffectProperties(const FGameplayEffectModCallbackData
 	}
 }
 
-void UAuraAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
+void UAuraAttributeSet::PostGameplayEffectExecute(
+    const FGameplayEffectModCallbackData& Data)
 {
-	Super::PostGameplayEffectExecute(Data);
-	
-	FEffectProperties Props;
-	SetEffectProperties(Data, Props);
-	
-	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
-	{
-		SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
-		UE_LOG(LogTemp, Log, TEXT("Change Health on : %s, Health %f"), *Props.TargetAvatarActor->GetName(), GetHealth());
-	}
-	
-	if (Data.EvaluatedData.Attribute == GetManaAttribute())
-	{
-		SetMana(FMath::Clamp(GetMana(), 0.0f, GetMaxMana()));
-	}
-	if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
-	{
-		const float LocalIncomingDamage = GetIncomingDamage();
-		SetIncomingDamage(0.f);
-		if (LocalIncomingDamage > 0.f)
-		{
-			const float NewHealth = GetHealth() - LocalIncomingDamage;
-			SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
-			
-			const bool bFatal = NewHealth <= 0.f;
-			if (bFatal)
-			{
-				ICombatInterface* CombatInterface = Cast<ICombatInterface>(Props.TargetAvatarActor);
-				if (CombatInterface)
-				{
-					CombatInterface->Die();
-				}
-			}
-			else
-			{
-				FGameplayTagContainer TagContainer;
-				TagContainer.AddTag(FAuraGameplayTags::Get().HitReact);
-				Props.TargetASC->TryActivateAbilitiesByTag(TagContainer);
-			}
-			const bool bBlock = UAuraAbilitySystemLibrary::IsBlockedHit(Props.EffectContextHandle);
-			const bool bCriticalHit = UAuraAbilitySystemLibrary::IsCriticalHit(Props.EffectContextHandle);
-			ShowFloatingText(Props, LocalIncomingDamage, bBlock, bCriticalHit);
-		}
-	}
-}
+    Super::PostGameplayEffectExecute(Data);
 
+    FEffectProperties Props;
+    SetEffectProperties(Data, Props);
+
+    if (Data.EvaluatedData.Attribute == GetHealthAttribute())
+    {
+        SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
+
+        UE_LOG(
+            LogTemp,
+            Log,
+            TEXT("Change Health on : %s, Health %f"),
+            *Props.TargetAvatarActor->GetName(),
+            GetHealth()
+        );
+    }
+
+    if (Data.EvaluatedData.Attribute == GetManaAttribute())
+    {
+        SetMana(FMath::Clamp(GetMana(), 0.0f, GetMaxMana()));
+    }
+
+    if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
+    {
+        const float LocalIncomingDamage = GetIncomingDamage();
+        SetIncomingDamage(0.f);
+
+        if (LocalIncomingDamage > 0.f)
+        {
+            const float NewHealth = GetHealth() - LocalIncomingDamage;
+            SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
+
+            const bool bFatal = NewHealth <= 0.f;
+
+            if (bFatal)
+            {
+                ICombatInterface* CombatInterface =
+                    Cast<ICombatInterface>(Props.TargetAvatarActor);
+
+                if (CombatInterface)
+                {
+                    CombatInterface->Die();
+                }
+            }
+            else
+            {
+                if (AAuraEnemy* Enemy =
+                    Cast<AAuraEnemy>(Props.TargetAvatarActor))
+                {
+                    if (Enemy->HasAuthority())
+                    {
+                        if (UAuraThreatSubsystem* ThreatSubsystem =
+                            Enemy->GetWorld()->GetSubsystem<UAuraThreatSubsystem>())
+                        {
+                            const FVector ThreatLocation =
+                                IsValid(Props.SourceAvatarActor)
+                                ? Props.SourceAvatarActor->GetActorLocation()
+                                : Enemy->GetActorLocation();
+
+                            ThreatSubsystem->ReportThreatForEnemy(
+                                Enemy,
+                                Props.SourceAvatarActor,
+                                ThreatLocation,
+                                EThreatType::Damage,
+                                false
+                            );
+                        	Enemy->HandleDamageReceived(Props.SourceAvatarActor);
+                        }
+                    }
+                }
+
+                FGameplayTagContainer TagContainer;
+                TagContainer.AddTag(FAuraGameplayTags::Get().HitReact);
+                Props.TargetASC->TryActivateAbilitiesByTag(TagContainer);
+            }
+
+            const bool bBlock =
+                UAuraAbilitySystemLibrary::IsBlockedHit(
+                    Props.EffectContextHandle);
+
+            const bool bCriticalHit =
+                UAuraAbilitySystemLibrary::IsCriticalHit(
+                    Props.EffectContextHandle);
+
+            ShowFloatingText(
+                Props,
+                LocalIncomingDamage,
+                bBlock,
+                bCriticalHit
+            );
+        }
+    }
+}
 
 void UAuraAttributeSet::ShowFloatingText(const FEffectProperties& Props, float Damage, bool bBlockedHit, bool bCriticalHit) const 
 {

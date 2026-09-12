@@ -239,6 +239,18 @@ FString("StartCombat")
 	FName("State.FinishedFacingTarget"), 
 FString("FinishedFacingTarget")
 		);
+	GameplayTags.State_ThreatFacingFinished = UGameplayTagsManager::Get().AddNativeGameplayTag(
+	FName("State.ThreatFacingFinished"), 
+FString("ThreatFacingFinished")
+		);
+	GameplayTags.State_Alert = UGameplayTagsManager::Get().AddNativeGameplayTag(
+	FName("State.Alert"), 
+FString("Alert")
+		);
+	GameplayTags.State_StartSearch = UGameplayTagsManager::Get().AddNativeGameplayTag(
+	FName("State.StartSearch"), 
+FString("StartSearch")
+		);
 
 	
 	/*

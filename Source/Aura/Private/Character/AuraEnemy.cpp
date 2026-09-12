@@ -13,6 +13,7 @@
 #include "Components/StateTreeComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AIController.h"
+#include "AI/AIAuraThreatSubsystem.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
@@ -94,7 +95,51 @@ void AAuraEnemy::Tick(float DeltaTime)
 		}
 	}
 
+	// =========================
+	// ALERT - FACE THREAT LOCATION
+	// =========================
 
+	if (bIsFacingThreatLocation)
+	{
+		FVector Direction =
+			PendingThreatLocation - GetActorLocation();
+
+		Direction.Z = 0.f;
+
+		if (Direction.IsNearlyZero())
+		{
+			bIsFacingThreatLocation = false;
+			OnFinishedFacingThreatLocation();
+			return;
+		}
+
+		const FRotator ThreatRotation = Direction.Rotation();
+
+		const FRotator NewRotation = FMath::RInterpTo(
+			GetActorRotation(),
+			FRotator(0.f, ThreatRotation.Yaw, 0.f),
+			DeltaTime,
+			RotationInterpSpeed
+		);
+
+		SetActorRotation(NewRotation);
+
+		const float DeltaYaw = FMath::Abs(
+			FMath::FindDeltaAngleDegrees(
+				GetActorRotation().Yaw,
+				ThreatRotation.Yaw
+			)
+		);
+
+		if (DeltaYaw <= FacingTolerance)
+		{
+			SetActorRotation(FRotator(0.f, ThreatRotation.Yaw, 0.f));
+			bIsFacingThreatLocation = false;
+			OnFinishedFacingThreatLocation();
+		}
+
+		return;
+	}
 	// =========================
 	// COMBAT - FACE TARGET
 	// =========================
@@ -174,6 +219,37 @@ bool AAuraEnemy::IsTargetInAttackRange() const
 	return Distance <= AttackRange;
 }
 
+void AAuraEnemy::HandleDamageReceived(AActor* SourceActor)
+{
+	if (!HasAuthority() || !IsValid(SourceActor))
+	{
+		return;
+	}
+	
+	if (UAuraThreatSubsystem* ThreatSubsystem =
+	   GetWorld()->GetSubsystem<UAuraThreatSubsystem>())
+	{
+		ThreatSubsystem->RegisterEnemyInCombat(this);
+	}
+
+	HandlePlayerDetected(SourceActor);
+}
+
+AActor* AAuraEnemy::GetCurrentTarget() const
+{
+	return CurrentTarget;
+}
+
+void AAuraEnemy::HandlePlayerDetectedFromGroup(AActor* Player)
+{
+	if (!HasAuthority() || !IsValid(Player))
+	{
+		return;
+	}
+
+	HandlePlayerDetected(Player);
+}
+
 void AAuraEnemy::FaceCurrentTarget()
 {
 	if (!CurrentTarget)
@@ -202,6 +278,62 @@ bool AAuraEnemy::IsFacingCurrentTarget() const
 	return DeltaYaw <= FacingTolerance;
 }
 
+void AAuraEnemy::ReceiveThreatAlert(const FThreatAlert& Alert)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	PendingThreatSource = Alert.SourceActor;
+	PendingThreatWitness = Alert.WitnessEnemy;
+	PendingThreatLocation = Alert.ThreatLocation;
+
+	LastKnownTargetLocation = Alert.ThreatLocation;
+	bHasLastKnownTargetLocation = true;
+
+	if (UAuraThreatSubsystem* ThreatSubsystem =
+	GetWorld()->GetSubsystem<UAuraThreatSubsystem>())
+	{
+		ThreatSubsystem->RegisterEnemyInCombat(this);
+	}
+
+	OnThreatAlertReceived();
+}
+
+void AAuraEnemy::ResolvePendingThreat()
+{
+	if (IsValid(PendingThreatWitness))
+	{
+		StartChasing(PendingThreatWitness);
+		PendingThreatWitness = nullptr;
+		PendingThreatSource = nullptr;
+		return;
+	}
+	AAIController* AIController = Cast<AAIController>(GetController());
+	const bool bHasValidSource =IsValid(PendingThreatSource) && AIController != nullptr;
+	bool bCanSeeThreatSource = false;
+
+	if (bHasValidSource)
+	{
+		const float DistanceSquared = FVector::DistSquared(GetActorLocation(),PendingThreatSource->GetActorLocation());
+		bCanSeeThreatSource =DistanceSquared <= FMath::Square(SightRadius) &&AIController->LineOfSightTo(PendingThreatSource);
+	}
+
+	if (bCanSeeThreatSource)
+	{
+		HandlePlayerDetected(PendingThreatSource);
+	}
+	else
+	{
+		CurrentTarget = nullptr;
+		TargetPawn = nullptr;
+		OnThreatSearch();
+	}
+
+	PendingThreatSource = nullptr;
+}
+
 void AAuraEnemy::StartChasing(AActor* TargetActor)
 {
 	if (!TargetActor)
@@ -209,7 +341,8 @@ void AAuraEnemy::StartChasing(AActor* TargetActor)
 		return;
 	}
 
-	AAIController* AIController = Cast<AAIController>(GetController());
+	AAIController* AIController =
+		Cast<AAIController>(GetController());
 
 	if (!AIController)
 	{
@@ -316,12 +449,41 @@ void AAuraEnemy::UpdateLastKnownTargetLocation(AActor* TargetActor)
 	bHasLastKnownTargetLocation = true;
 }
 
+void AAuraEnemy::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (HasAuthority() && !AlertGroupId.IsNone())
+	{
+		if (UAuraThreatSubsystem* ThreatSubsystem =
+			GetWorld()->GetSubsystem<UAuraThreatSubsystem>())
+		{
+			ThreatSubsystem->UnregisterEnemy(this);
+		}
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
+void AAuraEnemy::FaceThreatLocation()
+{
+	bIsFacingThreatLocation = true;
+}
 
 void AAuraEnemy::BeginPlay()
 {
 	Super::BeginPlay();
 	
 	StateTreeComponent = FindComponentByClass<UStateTreeComponent>();
+	
+	if (HasAuthority() && !AlertGroupId.IsNone())
+	{
+		if (UAuraThreatSubsystem* ThreatSubsystem =
+			GetWorld()->GetSubsystem<UAuraThreatSubsystem>())
+		{
+			ThreatSubsystem->RegisterEnemy(this);
+		}
+	}
+	
+	
 	GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 	InitAbilityActorInfo();
 
@@ -411,6 +573,20 @@ void AAuraEnemy::OnTargetPerceptionUpdated(AActor* Actor,FAIStimulus Stimulus)
 		UpdateLastKnownTargetLocation(Player);
 		
 		HandlePlayerDetected(Player);
+		if (HasAuthority() && !AlertGroupId.IsNone())
+		{
+			if (UAuraThreatSubsystem* ThreatSubsystem =
+				GetWorld()->GetSubsystem<UAuraThreatSubsystem>())
+			{
+				ThreatSubsystem->ReportThreatForEnemy(
+					this,
+					Player,
+					Player->GetActorLocation(),
+					EThreatType::Sight,
+					false
+				);
+			}
+		}
 	}
 	else
 	{
@@ -424,7 +600,7 @@ void AAuraEnemy::HandlePlayerDetected(AActor* Player)
 	{
 		return;
 	}
-	
+
 	if (bIsSearching || bIsLookingAround)
 	{
 		StopSearching();
@@ -436,6 +612,7 @@ void AAuraEnemy::HandlePlayerDetected(AActor* Player)
 
 	OnPlayerDetected(Player);
 }
+
 
 void AAuraEnemy::HandlePlayerLost()
 {
@@ -535,6 +712,12 @@ void AAuraEnemy::FinishSearch()
 	bIsSearching = false;
 
 	GetWorldTimerManager().ClearTimer(LookAroundTimerHandle);
+	
+	if (UAuraThreatSubsystem* ThreatSubsystem =
+	GetWorld()->GetSubsystem<UAuraThreatSubsystem>())
+	{
+		ThreatSubsystem->UnregisterEnemyFromCombat(this);
+	}
 
 	OnSearchFinished();
 }
