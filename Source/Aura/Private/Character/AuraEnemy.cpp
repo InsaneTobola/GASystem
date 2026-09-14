@@ -14,6 +14,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AIController.h"
 #include "AI/AIAuraThreatSubsystem.h"
+#include "Data/CombatProfileInfo.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
@@ -206,7 +207,7 @@ void AAuraEnemy::Die()
 
 bool AAuraEnemy::IsTargetInAttackRange() const
 {
-	if (!CurrentTarget)
+	if (!CurrentTarget || !CombatProfile)
 	{
 		return false;
 	}
@@ -216,7 +217,7 @@ bool AAuraEnemy::IsTargetInAttackRange() const
 		CurrentTarget->GetActorLocation()
 	);
 
-	return Distance <= AttackRange;
+	return Distance <= CombatProfile->AttackRange;
 }
 
 void AAuraEnemy::HandleDamageReceived(AActor* SourceActor)

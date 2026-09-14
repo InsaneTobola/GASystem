@@ -7,7 +7,6 @@
 #include "AuraGoblinSpearAttack.generated.h"
 
 class UAnimMontage;
-
 /**
  * 
  */

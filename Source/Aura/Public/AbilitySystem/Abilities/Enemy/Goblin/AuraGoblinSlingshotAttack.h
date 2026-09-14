@@ -6,6 +6,8 @@
 #include "AbilitySystem/Abilities/Enemy/AuraEnemyAttackAbility.h"
 #include "AuraGoblinSlingshotAttack.generated.h"
 
+
+class UAnimMontage;
 /**
  * 
  */

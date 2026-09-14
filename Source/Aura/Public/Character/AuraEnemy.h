@@ -65,9 +65,6 @@ public:
 	UPROPERTY()
 	TObjectPtr<UStateTreeComponent> StateTreeComponent;
 	
-	UPROPERTY(EditDefaultsOnly, Category = "Combat")
-	float AttackRange = 180.f;
-	
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	bool IsTargetInAttackRange() const;
 	void HandleDamageReceived(AActor* SourceActor);
@@ -165,7 +162,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI|Alert")
 	void FaceThreatLocation();
 	
-	
 	bool bIsFacingThreatLocation = false;
 	
 protected:
@@ -177,8 +173,7 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void InitAbilityActorInfo() override;
     virtual void InitializeDefaultAttributes() const override;
-
-
+	
     // ==========================================
     // Character Class
     // ==========================================
@@ -188,8 +183,7 @@ protected:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character Class Default")
     EcharacterClass CharacterClass = EcharacterClass::Warrior;
-
-
+	
     // ==========================================
     // Components
     // ==========================================
@@ -202,8 +196,7 @@ protected:
 
     UPROPERTY()
     TObjectPtr<UAISenseConfig_Sight> SightConfig;
-
-
+	
     // ==========================================
     // AI - Target
     // ==========================================
@@ -213,8 +206,7 @@ protected:
 
     UPROPERTY()
     TObjectPtr<AActor> CurrentTarget = nullptr;
-
-
+	
     // ==========================================
     // AI - Perception Settings
     // ==========================================
@@ -233,7 +225,6 @@ protected:
 
     FTimerHandle LoseSightTimerHandle;
 
-
     // ==========================================
     // AI - Perception Logic
     // ==========================================
@@ -247,7 +238,6 @@ protected:
 
     void ExecuteStopChase();
 
-
     // ==========================================
     // AI - Search
     // ==========================================
@@ -259,8 +249,7 @@ protected:
     bool bIsSearching = false;
 
     FAIRequestID SearchMoveRequestID;
-
-
+	
     // ==========================================
     // AI - Search / Look Around
     // ==========================================
@@ -282,8 +271,7 @@ protected:
     int32 MaxLookAroundCount = 0;
 
     FTimerHandle LookAroundTimerHandle;
-
-
+	
     // ==========================================
     // StateTree Events
     // ==========================================
