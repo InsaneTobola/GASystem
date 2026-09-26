@@ -28,10 +28,18 @@ class AURA_API UAuraInputConfig : public UDataAsset
 	
 	public:
 	
+	
 	const UInputAction* FindAbilityInputActionForTag(const FGameplayTag& InputTag, bool bLogNotFound = false) const;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TArray<FAuraInputAction> AbilityInputActions;
+	
+	/*Magic*/
+	
+	const UInputAction* FindMagicInputActionForTag(const FGameplayTag& InputTag,bool bLogNotFound = false) const;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TArray<FAuraInputAction> MagicInputActions;
 	
 };
  

@@ -8,15 +8,18 @@
 #include "AuraPlayerController.generated.h"
 
 
+class UAuraMagicDrawingWidget;
 class UInputMappingContext;
 class UInputAction;
-struct FInputActionValue;
 class UDamageTextComponent;
 class IEnemyInterface;
 class UAuraInputConfig;
 class UAuraAbilitySystemComponent;
 class USplineComponent;
+class UAuraMagicComponent;
+class SUAuraMagicDrawingWidget;
 
+struct FInputActionValue;
 /**
  * 
  */
@@ -28,12 +31,21 @@ public:
 	AAuraPlayerController();
 	virtual void PlayerTick(float DeltaTime) override;
 
+	UAuraMagicComponent* GetMagicComponent() const;
+	void MagicInputPressed(FGameplayTag InputTag);
+	void HandleMagicInput(const FGameplayTag& InputTag);
+	
 	UFUNCTION(Client, Reliable)
 	void ShowDamageNumber(float DamageAmount, ACharacter* TargetCharacter, bool bBlockedHit, bool bCriticalHit);
+	
+	void StartMagicDrawingMode();
+	void StopMagicDrawingMode();
+	void ConfirmMagicDrawingMode();
 	
 protected:
 	virtual void BeginPlay() override;
 	virtual void SetupInputComponent() override;
+
 private:
 	UPROPERTY(EditAnywhere, Category="Input")
 	TObjectPtr<UInputMappingContext> AuraContext;
@@ -77,4 +89,17 @@ private:
 	
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UDamageTextComponent> DamageTextComponentClass;
+	
+	// Magic
+	UPROPERTY(EditDefaultsOnly, Category = "Magic")
+	TSubclassOf<UAuraMagicDrawingWidget> MagicDrawingWidgetClass;
+
+	UPROPERTY()
+	TObjectPtr<UAuraMagicDrawingWidget> MagicDrawingWidget;
+	
+	bool bMagicDrawingMode = false;
+
+	
+
+	
 };

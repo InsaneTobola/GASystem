@@ -18,6 +18,9 @@ class AURA_API UAuraInputComponent : public UEnhancedInputComponent
 public: 
 	template<class UserClass, typename PressedFuncType, typename ReleasedFuncType, typename HeldFuncType>
 	void BindAbilityActions(const UAuraInputConfig* InputConfig, UserClass* Object, PressedFuncType PressedFunc, ReleasedFuncType ReleasedFunc, HeldFuncType HeldFunc);
+	
+	template <class UserClass, class PressedFuncType>
+	void BindMagicActions(const UAuraInputConfig* InputConfig, UserClass* Object, PressedFuncType PressedFunc);
 };
 
 template <class UserClass, typename PressedFuncType, typename ReleasedFuncType, typename HeldFuncType>
@@ -41,6 +44,23 @@ void UAuraInputComponent::BindAbilityActions(const UAuraInputConfig* InputConfig
 			if (HeldFunc)
 			{
 				BindAction(Action.InputAction, ETriggerEvent::Triggered, Object, HeldFunc, Action.InputTag);
+			}
+		}
+	}
+}
+
+template <class UserClass, typename PressedFuncType>
+void UAuraInputComponent::BindMagicActions(const UAuraInputConfig* InputConfig,UserClass* Object,PressedFuncType PressedFunc)
+{
+	check(InputConfig);
+
+	for (const FAuraInputAction& Action : InputConfig->MagicInputActions)
+	{
+		if (Action.InputAction && Action.InputTag.IsValid())
+		{
+			if (PressedFunc)
+			{
+				BindAction(Action.InputAction,ETriggerEvent::Started,Object,PressedFunc,Action.InputTag);
 			}
 		}
 	}

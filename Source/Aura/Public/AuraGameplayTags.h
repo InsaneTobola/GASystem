@@ -49,16 +49,20 @@ public:
 	FGameplayTag Attributes_Resistance_Air;
 	
 	FGameplayTag InputTag_Q;
-	FGameplayTag InputTag_W;
 	FGameplayTag InputTag_E;
 	FGameplayTag InputTag_R;
 	
 	FGameplayTag InputTag_1;
 	FGameplayTag InputTag_2;
 	FGameplayTag InputTag_3;
+	FGameplayTag InputTag_4;
 	
 	FGameplayTag InputTag_LMB;
 	FGameplayTag InputTag_RMB;
+	FGameplayTag InputTag_W;
+	FGameplayTag InputTag_A;
+	FGameplayTag InputTag_S;
+	FGameplayTag InputTag_D;
 	
 	FGameplayTag Damage;
 	FGameplayTag HitReact;

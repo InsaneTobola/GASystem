@@ -9,6 +9,7 @@
 #include "Player/AuraPlayerController.h"
 #include "Player/AuraPlayerState.h"
 #include "UI/HUD/AuraHUD.h"
+#include "Magic/UAuraMagicComponent.h"
 
 AAuraCharacter::AAuraCharacter()
 {
@@ -20,6 +21,8 @@ AAuraCharacter::AAuraCharacter()
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
 	bUseControllerRotationYaw = false;
+	
+	MagicComponent = CreateDefaultSubobject<UAuraMagicComponent>("MagicComponent");
 }
 
 void AAuraCharacter::PossessedBy(AController* NewController)

@@ -150,12 +150,8 @@ void FAuraGameplayTags::InitializeNativeGameplayTags()
 	 * Input Tags
 	 */
 	GameplayTags.InputTag_Q = UGameplayTagsManager::Get().AddNativeGameplayTag(
-	FName("InputTag.Q"), 
+		FName("InputTag.Q"), 
 FString("InputTag for button Q")
-	);
-	GameplayTags.InputTag_W = UGameplayTagsManager::Get().AddNativeGameplayTag(
-		FName("InputTag.W"), 
-	FString("InputTag for button W")
 		);
 	GameplayTags.InputTag_E = UGameplayTagsManager::Get().AddNativeGameplayTag(
 		FName("InputTag.E"), 
@@ -166,9 +162,7 @@ FString("InputTag for button Q")
 	FString("InputTag for button R")
 		);
 	
-	/*
-	 * Input Tags Variant
-	 */
+	
 	GameplayTags.InputTag_1 = UGameplayTagsManager::Get().AddNativeGameplayTag(
 		FName("InputTag.1"), 
 		FString("InputTag for button 1")
@@ -181,8 +175,14 @@ FString("InputTag for button Q")
 		FName("InputTag.3"), 
 	FString("InputTag for button 3")
 		);
+	GameplayTags.InputTag_4 = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("InputTag.4"), 
+	FString("InputTag for button 4")
+		);
 	
-	
+	/*
+	 * Input Tags Control
+	 */
 	GameplayTags.InputTag_LMB = UGameplayTagsManager::Get().AddNativeGameplayTag(
 		FName("InputTag.LMB"), 
 	FString("InputTag for Left Mouse Button, confirmation of a skill roll")
@@ -192,6 +192,22 @@ FString("InputTag for button Q")
 	FString("InputTag for Right Mouse Button, direction of travel")
 		);
 	
+	GameplayTags.InputTag_W = UGameplayTagsManager::Get().AddNativeGameplayTag(
+	FName("InputTag.W"), 
+FString("InputTag for button W")
+	);
+	GameplayTags.InputTag_A = UGameplayTagsManager::Get().AddNativeGameplayTag(
+	FName("InputTag.A"), 
+FString("InputTag for button A")
+	);
+	GameplayTags.InputTag_S = UGameplayTagsManager::Get().AddNativeGameplayTag(
+	FName("InputTag.S"), 
+FString("InputTag for button S")
+	);
+	GameplayTags.InputTag_D = UGameplayTagsManager::Get().AddNativeGameplayTag(
+	FName("InputTag.D"), 
+FString("InputTag for button D")
+	);
 	/*
 	 * Reaction
 	 */

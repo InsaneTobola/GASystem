@@ -6,6 +6,7 @@
 #include "Character/AuraCharacterBase.h"
 #include "AuraCharacter.generated.h"
 
+class UAuraMagicComponent;
 /**
  * 
  */
@@ -22,6 +23,11 @@ public:
 	virtual int32 GetPlayerLevel() override;
 	
 	/** End Combat Interface */
+	
+	/**Magic**/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Magic")
+	TObjectPtr<UAuraMagicComponent> MagicComponent;
+	
 private:
 	virtual void InitAbilityActorInfo() override;
 };
