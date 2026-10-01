@@ -37,6 +37,7 @@ public:
 	const FMagicStroke& GetCurrentStroke() const;
 	const FMagicGesture& GetCurrentGesture() const;
 	const FMagicGesture& GetLastValidatedGesture() const;
+	const FMagicValidationResult& GetLastValidationResult() const;
 	
 private:
 	
@@ -56,6 +57,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Magic", meta = (AllowPrivateAccess = "true"))
 	FMagicGesture LastValidatedGesture;
+	
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category = "Magic",meta = (AllowPrivateAccess = "true"))
+	FMagicValidationResult LastValidationResult;
 	
 	bool bIsStrokeActive = false;
 

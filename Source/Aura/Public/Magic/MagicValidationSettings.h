@@ -29,12 +29,18 @@ public:
 
     UPROPERTY(Config,EditAnywhere,BlueprintReadOnly,Category = "Points")
     int32 MinTotalPointCount = 2;
+    
+    UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Points")
+    int32 MinPointsPerStroke = 2;
 
     UPROPERTY(Config,EditAnywhere,Category = "Path")
     float MinPathLength = 0.01f;
 
     UPROPERTY(Config,EditAnywhere,BlueprintReadOnly,Category = "Path")
     float MaxPathLength = 12.0f;
+    
+    UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Path")
+    float MaxPathLengthPerStroke = 6.0f;
 
     UPROPERTY(Config,EditAnywhere,BlueprintReadOnly,Category = "Bounding Box")
     float MinBoundingBoxDimension = 0.02f;

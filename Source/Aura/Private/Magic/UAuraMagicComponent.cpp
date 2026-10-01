@@ -32,14 +32,16 @@ EMagicElement UAuraMagicComponent::GetSelectedElement() const
 
 void UAuraMagicComponent::StartDrawing()
 {
-	CurrentGesture.Reset();CurrentStroke.Reset();
+	CurrentGesture.Reset();
+	CurrentStroke.Reset();
 	LastValidatedGesture.Reset();
-    
+	LastValidationResult = FMagicValidationResult();
+
 	bIsStrokeActive = false;
 	bSafetyLimitExceeded = false;
-    
-	CurrentGesture.StartTime =static_cast<float>(FPlatformTime::Seconds());
-    
+
+	CurrentGesture.StartTime = static_cast<float>(FPlatformTime::Seconds());
+
 	MagicState = EMagicState::Drawing;
 }
 
@@ -70,7 +72,7 @@ bool UAuraMagicComponent::StartStroke()
 
 	ResetStroke();
 
-	CurrentStroke.StartTime =static_cast<float>(FPlatformTime::Seconds());
+	CurrentStroke.StartTime = static_cast<float>(FPlatformTime::Seconds());
 
 	bIsStrokeActive = true;
 
@@ -84,7 +86,7 @@ bool UAuraMagicComponent::FinishStroke()
 		return false;
 	}
 
-	CurrentStroke.EndTime =static_cast<float>(FPlatformTime::Seconds());
+	CurrentStroke.EndTime = static_cast<float>(FPlatformTime::Seconds());
 	bIsStrokeActive = false;
 
 	if (CurrentStroke.Points.Num() == 0)
@@ -102,43 +104,50 @@ FMagicValidationResult UAuraMagicComponent::ConfirmGesture()
 {
 	if (!IsDrawing())
 	{
-		FMagicValidationResult Result;
-		Result.FailureReason = EMagicValidationFailure::NoStrokes;
-		return Result;
+		LastValidationResult = FMagicValidationResult();
+
+		LastValidationResult.FailureReason = EMagicValidationFailure::NoStrokes;
+
+		return LastValidationResult;
 	}
 
 	if (bIsStrokeActive)
 	{
 		FinishStroke();
 	}
+
 	CurrentGesture.EndTime = static_cast<float>(FPlatformTime::Seconds());
 
 	if (bSafetyLimitExceeded)
 	{
-		FMagicValidationResult Result;
+		LastValidationResult=FMagicValidationResult();
+		LastValidationResult.StrokeCount = CurrentGesture.GetStrokeCount();
+		LastValidationResult.TotalPointCount = CurrentGesture.GetTotalPointCount();
+		LastValidationResult.GestureDuration = CurrentGesture.GetDuration();
+		LastValidationResult.FailureReason = EMagicValidationFailure::SafetyLimitExceeded;
 
-		Result.StrokeCount = CurrentGesture.GetStrokeCount();
-		Result.TotalPointCount = CurrentGesture.GetTotalPointCount();
-		Result.GestureDuration = CurrentGesture.GetDuration();
-		Result.FailureReason = EMagicValidationFailure::SafetyLimitExceeded;
-		return Result;
+		return LastValidationResult;
 	}
 
-	const UMagicValidationSettings* Settings =
-		GetDefault<UMagicValidationSettings>();
+	const UMagicValidationSettings* Settings =GetDefault<UMagicValidationSettings>();
 
 	if (!Settings)
 	{
-		FMagicValidationResult Result;Result.FailureReason =EMagicValidationFailure::SafetyLimitExceeded;
-		return Result;
-	}
-	FMagicValidationResult Result =FMagicGestureValidator::Validate(CurrentGesture,*Settings);
+		LastValidationResult =FMagicValidationResult();
 
-	if (Result.bIsValid)
+		LastValidationResult.FailureReason = EMagicValidationFailure::SafetyLimitExceeded;
+
+		return LastValidationResult;
+	}
+
+	LastValidationResult =FMagicGestureValidator::Validate(CurrentGesture,*Settings);
+
+	if (LastValidationResult.bIsValid)
 	{
 		LastValidatedGesture = CurrentGesture;
 	}
-	return Result;
+
+	return LastValidationResult;
 }
 
 bool UAuraMagicComponent::IsDrawing() const
@@ -166,6 +175,11 @@ const FMagicGesture& UAuraMagicComponent::GetLastValidatedGesture() const
 	return LastValidatedGesture;
 }
 
+const FMagicValidationResult& UAuraMagicComponent::GetLastValidationResult() const
+{
+	return LastValidationResult;
+}
+
 bool UAuraMagicComponent::AddStrokePoint(const FVector2D& NormalizedPoint)
 {
 	if (!IsDrawing() || !bIsStrokeActive)
@@ -185,30 +199,37 @@ bool UAuraMagicComponent::AddStrokePoint(const FVector2D& NormalizedPoint)
 		return false;
 	}
 
+	// Max points in current stroke
 	if (CurrentStroke.Points.Num() >=Settings->MaxPointsPerStroke)
 	{
 		bSafetyLimitExceeded = true;
 		return false;
 	}
 
-	if (CurrentGesture.GetTotalPointCount() +CurrentStroke.Points.Num() >=Settings->MaxTotalPointCount)
+	// Max points in entire gesture
+	if (CurrentGesture.GetTotalPointCount() +CurrentStroke.Points.Num() + 1 >Settings->MaxTotalPointCount)
 	{
 		bSafetyLimitExceeded = true;
 		return false;
 	}
 
-	const FVector2D ClampedPoint(FMath::Clamp(NormalizedPoint.X, 0.0f, 1.0f),FMath::Clamp(NormalizedPoint.Y, 0.0f, 1.0f));
+	const FVector2D ClampedPoint(FMath::Clamp(NormalizedPoint.X,0.0f,1.0f),
+		FMath::Clamp(NormalizedPoint.Y,0.0f,1.0f)
+	);
 
 	if (CurrentStroke.Points.Num() > 0)
 	{
-		const FVector2D& LastPoint =CurrentStroke.Points.Last();
+		const FVector2D& LastPoint = CurrentStroke.Points.Last();
 
 		if (FVector2D::Distance(LastPoint,ClampedPoint)< Settings->MinPointDistance)
 		{
 			return false;
 		}
 	}
-	CurrentStroke.Points.Add(ClampedPoint);
+
+	CurrentStroke.Points.Add(ClampedPoint
+	);
+
 	return true;
 }
 

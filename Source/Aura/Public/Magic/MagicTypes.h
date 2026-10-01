@@ -31,8 +31,10 @@ enum class EMagicValidationFailure : uint8
     TooManyPoints,
 
     TooManyStrokes,
-
-    PathTooShort,
+	
+	StrokePathTooLong,
+    
+	PathTooShort,
     PathTooLong,
 
     BoundingBoxTooSmall,
