@@ -81,10 +81,11 @@ void AAuraPlayerController::StartMagicDrawingMode()
 
 	FInputModeUIOnly InputModeData;
 
-	InputModeData.SetWidgetToFocus(MagicDrawingWidget->TakeWidget());
+	//InputModeData.SetWidgetToFocus(MagicDrawingWidget->TakeWidget());
 
 	SetInputMode(InputModeData);
 }
+
 
 void AAuraPlayerController::StopMagicDrawingMode()
 {

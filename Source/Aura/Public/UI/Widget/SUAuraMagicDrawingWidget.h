@@ -5,6 +5,7 @@
 #include "SUAuraMagicDrawingWidget.generated.h"
 
 class UAuraMagicComponent;
+class UButton;
 
 UCLASS()
 class AURA_API UAuraMagicDrawingWidget : public UUserWidget
@@ -14,6 +15,12 @@ class AURA_API UAuraMagicDrawingWidget : public UUserWidget
 public:
 	void InitializeDrawing(UAuraMagicComponent* InMagicComponent);
 
+	UFUNCTION(BlueprintCallable)
+	void CancelMagicDrawing();
+	
+	UFUNCTION(BlueprintCallable)
+	void ResetMagicDrawing();
+	
 protected:
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent) override;
 
@@ -26,7 +33,7 @@ protected:
 private:
 	UPROPERTY()
 	TObjectPtr<UAuraMagicComponent> MagicComponent;
-
+	
 	bool bIsDrawing = false;
 	FVector2D ScreenToNormalized(const FGeometry& Geometry,const FVector2D& ScreenPosition) const;
 	FReply ConfirmMagicDrawing();

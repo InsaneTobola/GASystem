@@ -25,6 +25,7 @@ public:
 	bool FinishStroke();
 	FMagicValidationResult ConfirmGesture();
 	void StopDrawing();
+	void ResetMagic();
 	void CancelMagic();
 
 	// State

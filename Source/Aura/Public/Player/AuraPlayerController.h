@@ -37,7 +37,6 @@ public:
 	
 	UFUNCTION(Client, Reliable)
 	void ShowDamageNumber(float DamageAmount, ACharacter* TargetCharacter, bool bBlockedHit, bool bCriticalHit);
-	
 	void StartMagicDrawingMode();
 	void StopMagicDrawingMode();
 	void ConfirmMagicDrawingMode();

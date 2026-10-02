@@ -240,6 +240,13 @@ void UAuraMagicComponent::StopDrawing()
 	MagicState = EMagicState::Inactive;
 }
 
+void UAuraMagicComponent::ResetMagic()
+{
+	ResetStroke();
+
+	MagicState = EMagicState::Drawing;
+}
+
 void UAuraMagicComponent::CancelMagic()
 {
 	CurrentGesture.Reset();

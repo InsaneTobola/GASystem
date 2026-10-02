@@ -6,9 +6,37 @@
 #include "InputCoreTypes.h"
 #include "Rendering/DrawElements.h"
 
+
+
 void UAuraMagicDrawingWidget::InitializeDrawing(UAuraMagicComponent* InMagicComponent)
 {
     MagicComponent = InMagicComponent;
+}
+
+void UAuraMagicDrawingWidget::CancelMagicDrawing()
+{
+    if (MagicComponent)
+    {
+        MagicComponent->CancelMagic();
+    }
+    AAuraPlayerController* PlayerController = Cast<AAuraPlayerController>(GetOwningPlayer());
+    if (!PlayerController)
+    {
+        return;
+    }
+    PlayerController->StopMagicDrawingMode();
+}
+
+void UAuraMagicDrawingWidget::ResetMagicDrawing()
+{
+    if (!MagicComponent)
+    {
+        return;
+    }
+
+    MagicComponent->StartDrawing();
+
+    bIsDrawing = false;
 }
 
 FReply UAuraMagicDrawingWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
