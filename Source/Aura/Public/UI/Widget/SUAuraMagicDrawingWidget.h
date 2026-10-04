@@ -37,4 +37,5 @@ private:
 	bool bIsDrawing = false;
 	FVector2D ScreenToNormalized(const FGeometry& Geometry,const FVector2D& ScreenPosition) const;
 	FReply ConfirmMagicDrawing();
+	bool IsInsideDrawingSquare(const FGeometry& Geometry,const FVector2D& ScreenPosition) const;
 };

@@ -48,6 +48,10 @@ FReply UAuraMagicDrawingWidget::NativeOnMouseButtonDown(const FGeometry& InGeome
 
     if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
     {
+        if (!IsInsideDrawingSquare(InGeometry,InMouseEvent.GetScreenSpacePosition()))
+        {
+            return FReply::Unhandled();
+        }
         if (MagicComponent->StartStroke())
         {
             bIsDrawing = true;
@@ -99,18 +103,33 @@ FReply UAuraMagicDrawingWidget::NativeOnMouseButtonUp(const FGeometry& InGeometr
 
 int32 UAuraMagicDrawingWidget::NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry,const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId,const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const
 {
-   const int32 ResultLayer =Super::NativePaint(Args,AllottedGeometry,MyCullingRect,OutDrawElements,LayerId,InWidgetStyle,bParentEnabled);
-
+   const int32 ResultLayer = Super::NativePaint(Args,AllottedGeometry,MyCullingRect,OutDrawElements,LayerId,InWidgetStyle,bParentEnabled);
+    
     if (!MagicComponent)
     {
         return ResultLayer;
     }
 
-    const float Width = AllottedGeometry.GetLocalSize().X;
-    const float Height = AllottedGeometry.GetLocalSize().Y;
-    const FMagicGesture& Gesture = MagicComponent->GetCurrentGesture();
+    const FVector2D WidgetSize = AllottedGeometry.GetLocalSize();
 
-    for (const FMagicStroke& Stroke : Gesture.Strokes)
+    if (WidgetSize.X <= KINDA_SMALL_NUMBER || WidgetSize.Y <= KINDA_SMALL_NUMBER)
+    {
+        return ResultLayer;
+    }
+
+    const float SquareSize = FMath::Min(WidgetSize.X,WidgetSize.Y);
+
+    const FVector2D SquareOrigin(
+        (WidgetSize.X - SquareSize) * 0.5f,
+        (WidgetSize.Y - SquareSize) * 0.5f);
+
+
+    const FMagicGesture& Gesture =
+        MagicComponent->GetCurrentGesture();
+
+
+    for (const FMagicStroke& Stroke :
+         Gesture.Strokes)
     {
         if (Stroke.Points.Num() < 2)
         {
@@ -118,34 +137,67 @@ int32 UAuraMagicDrawingWidget::NativePaint(const FPaintArgs& Args, const FGeomet
         }
 
         TArray<FVector2D> ScreenPoints;
-        ScreenPoints.Reserve(Stroke.Points.Num());
 
-        for (const FVector2D& Point : Stroke.Points)
+        ScreenPoints.Reserve(
+            Stroke.Points.Num());
+
+        for (const FVector2D& Point :
+             Stroke.Points)
         {
-            ScreenPoints.Add(FVector2D(Point.X * Width,Point.Y * Height));
+            ScreenPoints.Add(
+                SquareOrigin +
+                FVector2D(
+                    Point.X * SquareSize,
+                    Point.Y * SquareSize));
         }
 
-        FSlateDrawElement::MakeLines(OutDrawElements,ResultLayer + 1,AllottedGeometry.ToPaintGeometry(),ScreenPoints,ESlateDrawEffect::None,FLinearColor::White,true,4.0f);
+        FSlateDrawElement::MakeLines(
+            OutDrawElements,
+            ResultLayer + 1,
+            AllottedGeometry.ToPaintGeometry(),
+            ScreenPoints,
+            ESlateDrawEffect::None,
+            FLinearColor::White,
+            true,
+            4.0f);
     }
+
 
     if (MagicComponent->IsStrokeActive())
     {
-        const FMagicStroke& CurrentStroke =MagicComponent->GetCurrentStroke();
+        const FMagicStroke& CurrentStroke =
+            MagicComponent->GetCurrentStroke();
 
         if (CurrentStroke.Points.Num() >= 2)
         {
             TArray<FVector2D> ScreenPoints;
-            ScreenPoints.Reserve(CurrentStroke.Points.Num());
 
-            for (const FVector2D& Point :CurrentStroke.Points)
+            ScreenPoints.Reserve(
+                CurrentStroke.Points.Num());
+
+            for (const FVector2D& Point :
+                 CurrentStroke.Points)
             {
-                ScreenPoints.Add(FVector2D(Point.X * Width,Point.Y * Height));
+                ScreenPoints.Add(
+                    SquareOrigin +
+                    FVector2D(
+                        Point.X * SquareSize,
+                        Point.Y * SquareSize));
             }
-            FSlateDrawElement::MakeLines(OutDrawElements,ResultLayer + 1,AllottedGeometry.ToPaintGeometry(),ScreenPoints,ESlateDrawEffect::None,FLinearColor::White,true,4.0f);
+
+            FSlateDrawElement::MakeLines(
+                OutDrawElements,
+                ResultLayer + 1,
+                AllottedGeometry.ToPaintGeometry(),
+                ScreenPoints,
+                ESlateDrawEffect::None,
+                FLinearColor::White,
+                true,
+                4.0f);
         }
     }
 
-    return ResultLayer + 1;
+    return ResultLayer + 1; 
 }
 
 FVector2D UAuraMagicDrawingWidget::ScreenToNormalized(const FGeometry& Geometry, const FVector2D& ScreenPosition) const
@@ -157,14 +209,15 @@ FVector2D UAuraMagicDrawingWidget::ScreenToNormalized(const FGeometry& Geometry,
     {
         return FVector2D::ZeroVector;
     }
-    FVector2D NormalizedPosition;
+    const float SquareSize =FMath::Min(LocalSize.X,LocalSize.Y);
+    const FVector2D SquareOrigin((LocalSize.X - SquareSize) * 0.5f,(LocalSize.Y - SquareSize) * 0.5f);
 
-    NormalizedPosition.X = LocalPosition.X / LocalSize.X;
-    NormalizedPosition.Y = LocalPosition.Y / LocalSize.Y;
-    NormalizedPosition.X = FMath::Clamp(NormalizedPosition.X,0.0f,1.0f);
-    NormalizedPosition.Y = FMath::Clamp(NormalizedPosition.Y,0.0f,1.0f);
+    FVector2D SquarePosition =LocalPosition - SquareOrigin;
 
-    return NormalizedPosition;
+    SquarePosition.X =FMath::Clamp(SquarePosition.X,0.0f,SquareSize);
+    SquarePosition.Y =FMath::Clamp(SquarePosition.Y,0.0f,SquareSize);
+
+    return SquarePosition / SquareSize;
 }
 
 FReply UAuraMagicDrawingWidget::ConfirmMagicDrawing()
@@ -184,5 +237,25 @@ FReply UAuraMagicDrawingWidget::ConfirmMagicDrawing()
     PlayerController->ConfirmMagicDrawingMode();
 
     return FReply::Handled();
+}
+
+bool UAuraMagicDrawingWidget::IsInsideDrawingSquare(const FGeometry& Geometry, const FVector2D& ScreenPosition) const
+{
+    const FVector2D LocalPosition = Geometry.AbsoluteToLocal(ScreenPosition);
+    const FVector2D LocalSize = Geometry.GetLocalSize();
+
+    if (LocalSize.X <= KINDA_SMALL_NUMBER || LocalSize.Y <= KINDA_SMALL_NUMBER)
+    {
+        return false;
+    }
+
+    const float SquareSize = FMath::Min(LocalSize.X,LocalSize.Y);
+    const FVector2D SquareOrigin((LocalSize.X - SquareSize) * 0.5f,(LocalSize.Y - SquareSize) * 0.5f);
+    const FVector2D SquareMax = SquareOrigin + FVector2D(SquareSize,SquareSize);
+
+    return LocalPosition.X >= SquareOrigin.X &&
+           LocalPosition.X <= SquareMax.X &&
+           LocalPosition.Y >= SquareOrigin.Y &&
+           LocalPosition.Y <= SquareMax.Y;
 }
 

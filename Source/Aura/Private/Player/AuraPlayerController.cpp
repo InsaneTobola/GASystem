@@ -6,17 +6,23 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystem/AuraAbilitySystemComponent.h"
 #include "AuraGameplayTags.h"
-#include "EnhancedInputSubsystems.h"
+
+#include "Character/AuraCharacter.h"
 #include "Components/SplineComponent.h"
+
+#include "EnhancedInputSubsystems.h"
+#include "Engine/Engine.h"
+
+#include "GameFramework/Character.h"
+
 #include "Input/AuraInputComponent.h"
 #include "Interaction/EnemyInterface.h"
-#include "GameFramework/Character.h"
-#include "UI/Widget/DamageTextComponent.h"
-#include "UI/Widget/SUAuraMagicDrawingWidget.h"
-#include "Character/AuraCharacter.h"
+
 #include "Magic/UAuraMagicComponent.h"
 #include "Magic/MagicPointCloudRecognizer.h"
 
+#include "UI/Widget/DamageTextComponent.h"
+#include "UI/Widget/SUAuraMagicDrawingWidget.h"
 
 
 AAuraPlayerController::AAuraPlayerController()
@@ -117,7 +123,31 @@ void AAuraPlayerController::ConfirmMagicDrawingMode()
 	{
 		return;
 	}
+	const FMagicGesture& Gesture =
+		MagicComponent->GetCurrentGesture();
 
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT(
+			"MAGIC DEBUG BEFORE VALIDATION | Strokes=%d | TotalPoints=%d"
+		),
+		Gesture.GetStrokeCount(),
+		Gesture.GetTotalPointCount()
+	);
+
+	for (int32 Index = 0; Index < Gesture.Strokes.Num(); ++Index)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT(
+				"MAGIC DEBUG STROKE | Index=%d | Points=%d"
+			),
+			Index,
+			Gesture.Strokes[Index].Points.Num()
+		);
+	}
 	const FMagicValidationResult Result = MagicComponent->ConfirmGesture();
 	if (!Result.bIsValid)
 	{
@@ -127,7 +157,8 @@ void AAuraPlayerController::ConfirmMagicDrawingMode()
 			TEXT("Magic Gesture rejected. Reason: %d"),
 			static_cast<int32>(Result.FailureReason)
 		);
-
+		StopMagicDrawingMode();
+		
 		return;
 	}
 
