@@ -26,14 +26,10 @@ enum class EMagicValidationFailure : uint8
     None,
 
     NoStrokes,
-
     TooFewPoints,
     TooManyPoints,
-
     TooManyStrokes,
-	
 	StrokePathTooLong,
-    
 	PathTooShort,
     PathTooLong,
 
@@ -140,6 +136,12 @@ struct FMagicPatternValidationRules
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     float MaxPathLength = 100.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float MinStrokePathLength = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float MaxStrokePathLength = 100.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     float MinWidth = 0.0f;

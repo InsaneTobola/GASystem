@@ -4,17 +4,19 @@
 #include "Player/AuraPlayerController.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystem/AuraAbilitySystemComponent.h"
 #include "AuraGameplayTags.h"
 #include "EnhancedInputSubsystems.h"
-#include "AbilitySystem/AuraAbilitySystemComponent.h"
 #include "Components/SplineComponent.h"
 #include "Input/AuraInputComponent.h"
 #include "Interaction/EnemyInterface.h"
 #include "GameFramework/Character.h"
 #include "UI/Widget/DamageTextComponent.h"
+#include "UI/Widget/SUAuraMagicDrawingWidget.h"
 #include "Character/AuraCharacter.h"
 #include "Magic/UAuraMagicComponent.h"
-#include "UI/Widget/SUAuraMagicDrawingWidget.h"
+#include "Magic/MagicPointCloudRecognizer.h"
+
 
 
 AAuraPlayerController::AAuraPlayerController()
@@ -110,13 +112,13 @@ void AAuraPlayerController::StopMagicDrawingMode()
 
 void AAuraPlayerController::ConfirmMagicDrawingMode()
 {
-	UAuraMagicComponent* MagicComponent =GetMagicComponent();
+	UAuraMagicComponent* MagicComponent = GetMagicComponent();
 	if (!MagicComponent)
 	{
 		return;
 	}
 
-	const FMagicValidationResult Result =MagicComponent->ConfirmGesture();
+	const FMagicValidationResult Result = MagicComponent->ConfirmGesture();
 	if (!Result.bIsValid)
 	{
 		UE_LOG(
@@ -141,6 +143,32 @@ void AAuraPlayerController::ConfirmMagicDrawingMode()
 		Result.AspectRatio
 	);
 	
+	const FMagicRecognitionResult Recognition = MagicComponent->RecognizeCurrentGesture();
+	
+	if (Recognition.bMatchFound)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT(
+				"MAGIC RECOGNIZED | Pattern=%s | Template=%s | Similarity=%.3f | Distance=%.3f"
+			),
+			*Recognition.PatternId.ToString(),
+			*Recognition.TemplateId.ToString(),
+			Recognition.SimilarityScore,
+			Recognition.CloudDistance
+		);
+	}
+	else
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT(
+				"MAGIC NOT RECOGNIZED | No template passed similarity threshold."
+			)
+		);
+	}
 	StopMagicDrawingMode();
 }
 

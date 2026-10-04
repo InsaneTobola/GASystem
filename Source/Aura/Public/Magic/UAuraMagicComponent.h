@@ -1,9 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "Components/ActorComponent.h"
+#include "Magic/MagicPointCloudRecognizer.h"
 #include "Magic/MagicTypes.h"
 #include "UAuraMagicComponent.generated.h"
+
+class UMagicPatternDefinition;
 
 UCLASS(ClassGroup=(Magic), meta=(BlueprintSpawnableComponent))
 class AURA_API UAuraMagicComponent : public UActorComponent
@@ -30,7 +34,6 @@ public:
 
 	// State
 	EMagicState GetMagicState() const;
-
 	bool IsDrawing() const;
 
 	// Stroke
@@ -40,6 +43,11 @@ public:
 	const FMagicGesture& GetLastValidatedGesture() const;
 	const FMagicValidationResult& GetLastValidationResult() const;
 	
+	// Recognize 
+	FMagicRecognitionResult RecognizeCurrentGesture() const;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Magic|Recognition")
+	TArray<TObjectPtr<UMagicPatternDefinition>> PatternDefinitions;
 private:
 	
 	void ResetStroke();
@@ -61,6 +69,8 @@ private:
 	
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category = "Magic",meta = (AllowPrivateAccess = "true"))
 	FMagicValidationResult LastValidationResult;
+	
+	
 	
 	bool bIsStrokeActive = false;
 

@@ -71,7 +71,7 @@ FReply UAuraMagicDrawingWidget::NativeOnMouseMove(const FGeometry& InGeometry, c
     {
         return FReply::Unhandled();
     }
-    const FVector2D NormalizedPoint =ScreenToNormalized(InGeometry,InMouseEvent.GetScreenSpacePosition());
+    const FVector2D NormalizedPoint = ScreenToNormalized(InGeometry,InMouseEvent.GetScreenSpacePosition());
     MagicComponent->AddStrokePoint(NormalizedPoint);
     return FReply::Handled();
 }
@@ -83,8 +83,7 @@ FReply UAuraMagicDrawingWidget::NativeOnMouseButtonUp(const FGeometry& InGeometr
         return FReply::Unhandled();
     }
 
-    if (InMouseEvent.GetEffectingButton() ==
-        EKeys::LeftMouseButton)
+    if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
     {
         if (bIsDrawing)
         {
@@ -92,16 +91,13 @@ FReply UAuraMagicDrawingWidget::NativeOnMouseButtonUp(const FGeometry& InGeometr
 
             bIsDrawing = false;
 
-            return FReply::Handled()
-                .ReleaseMouseCapture();
+            return FReply::Handled().ReleaseMouseCapture();
         }
     }
     return FReply::Unhandled();
 }
 
-int32 UAuraMagicDrawingWidget::NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry,
-    const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId,
-    const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const
+int32 UAuraMagicDrawingWidget::NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry,const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId,const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const
 {
    const int32 ResultLayer =Super::NativePaint(Args,AllottedGeometry,MyCullingRect,OutDrawElements,LayerId,InWidgetStyle,bParentEnabled);
 
@@ -154,8 +150,8 @@ int32 UAuraMagicDrawingWidget::NativePaint(const FPaintArgs& Args, const FGeomet
 
 FVector2D UAuraMagicDrawingWidget::ScreenToNormalized(const FGeometry& Geometry, const FVector2D& ScreenPosition) const
 {
-    const FVector2D LocalPosition =Geometry.AbsoluteToLocal(ScreenPosition);
-    const FVector2D LocalSize =Geometry.GetLocalSize();
+    const FVector2D LocalPosition = Geometry.AbsoluteToLocal(ScreenPosition);
+    const FVector2D LocalSize = Geometry.GetLocalSize();
 
     if (LocalSize.X <= KINDA_SMALL_NUMBER || LocalSize.Y <= KINDA_SMALL_NUMBER)
     {

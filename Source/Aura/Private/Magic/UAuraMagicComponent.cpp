@@ -2,6 +2,8 @@
 #include "HAL/PlatformTime.h"
 #include "Magic/MagicGestureValidator.h"
 #include "Magic/MagicValidationSettings.h"
+#include "Magic/MagicPointCloudRecognizer.h"
+#include "Magic/MagicPatternDefinition.h"
 
 UAuraMagicComponent::UAuraMagicComponent()
 {
@@ -146,7 +148,12 @@ FMagicValidationResult UAuraMagicComponent::ConfirmGesture()
 	{
 		LastValidatedGesture = CurrentGesture;
 	}
-
+	
+	if (LastValidationResult.bIsValid)
+	{
+		LastValidatedGesture = CurrentGesture;
+	}
+	
 	return LastValidationResult;
 }
 
@@ -180,6 +187,51 @@ const FMagicValidationResult& UAuraMagicComponent::GetLastValidationResult() con
 	return LastValidationResult;
 }
 
+FMagicRecognitionResult UAuraMagicComponent::RecognizeCurrentGesture() const
+{
+	FMagicRecognitionResult BestResult;
+	const FMagicGesture& Gesture = GetCurrentGesture();
+
+	if (Gesture.GetTotalPointCount() < 2)
+	{
+		return BestResult;
+	}
+
+	FMagicPointCloud Candidate;
+
+	if (!FMagicPointCloudRecognizer::BuildPointCloud(Gesture, Candidate))
+	{
+		return BestResult;
+	}
+
+	for (const UMagicPatternDefinition* Pattern : PatternDefinitions)
+	{
+		if (!IsValid(Pattern))
+		{
+			continue;
+		}
+		TArray<FMagicPointCloudTemplate> RuntimeTemplates;
+		Pattern->BuildRuntimeTemplates(RuntimeTemplates);
+
+		if (RuntimeTemplates.Num() == 0)
+		{
+			continue;
+		}
+		const FMagicRecognitionResult PatternResult = FMagicPointCloudRecognizer::Recognize(Candidate,RuntimeTemplates,Pattern->MinimumSimilarityScore
+			);
+
+		if (!PatternResult.bMatchFound)
+		{
+			continue;
+		}
+		if (!BestResult.bMatchFound || PatternResult.SimilarityScore > BestResult.SimilarityScore)
+		{
+			BestResult = PatternResult;
+		}
+	}
+
+	return BestResult;
+}
 bool UAuraMagicComponent::AddStrokePoint(const FVector2D& NormalizedPoint)
 {
 	if (!IsDrawing() || !bIsStrokeActive)
@@ -187,7 +239,7 @@ bool UAuraMagicComponent::AddStrokePoint(const FVector2D& NormalizedPoint)
 		return false;
 	}
 
-	const UMagicValidationSettings* Settings =GetDefault<UMagicValidationSettings>();
+	const UMagicValidationSettings* Settings = GetDefault<UMagicValidationSettings>();
 
 	if (!Settings)
 	{
@@ -200,14 +252,14 @@ bool UAuraMagicComponent::AddStrokePoint(const FVector2D& NormalizedPoint)
 	}
 
 	// Max points in current stroke
-	if (CurrentStroke.Points.Num() >=Settings->MaxPointsPerStroke)
+	if (CurrentStroke.Points.Num() >= Settings->MaxPointsPerStroke)
 	{
 		bSafetyLimitExceeded = true;
 		return false;
 	}
 
 	// Max points in entire gesture
-	if (CurrentGesture.GetTotalPointCount() +CurrentStroke.Points.Num() + 1 >Settings->MaxTotalPointCount)
+	if (CurrentGesture.GetTotalPointCount() + CurrentStroke.Points.Num() + 1 >Settings->MaxTotalPointCount)
 	{
 		bSafetyLimitExceeded = true;
 		return false;
@@ -236,7 +288,7 @@ bool UAuraMagicComponent::AddStrokePoint(const FVector2D& NormalizedPoint)
 void UAuraMagicComponent::StopDrawing()
 {
 	bIsStrokeActive = false;
-	CurrentGesture.EndTime =static_cast<float>(FPlatformTime::Seconds());
+	CurrentGesture.EndTime = static_cast<float>(FPlatformTime::Seconds());
 	MagicState = EMagicState::Inactive;
 }
 
