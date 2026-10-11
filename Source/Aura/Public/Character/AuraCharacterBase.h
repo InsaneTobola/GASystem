@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
 #include "GameFramework/Character.h"
+#include "Data/CharacterClassInfo.h"
 #include "Interaction/CombatInterface.h"
 #include "AuraCharacterBase.generated.h"
 
@@ -25,11 +26,15 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	UAttributeSet* GetAttributeSet() const { return AttributeSet; }
 	
-	virtual UAnimMontage* GetHitReactMontage_Implementation() override;
-	virtual void Die() override;
-	
 	UFUNCTION(NetMulticast, Reliable)
 	virtual void MulticastHandleDeath();
+	
+	/** Combat Interface */
+	virtual UAnimMontage* GetHitReactMontage_Implementation() override;
+	virtual void Die() override;
+	virtual ECharacterClass GetCharacterClass_Implementation() override;
+	
+	/** End Combat Interface */
 protected:
 	virtual void BeginPlay() override;
 
@@ -78,6 +83,9 @@ protected:
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TObjectPtr<UMaterialInstance> WeaponDissolveMaterialInstance;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character Class Default")
+	ECharacterClass CharacterClass = ECharacterClass::Warrior;
 private:
 	
 	UPROPERTY(EditAnywhere, Category = "Abilities")

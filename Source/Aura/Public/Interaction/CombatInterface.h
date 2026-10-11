@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+#include "Data/CharacterClassInfo.h"
 #include "CombatInterface.generated.h"
 
 // This class does not need to be modified.
@@ -34,5 +35,8 @@ public:
 	UAnimMontage* GetHitReactMontage();
 
 	virtual void Die() = 0;
+	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	ECharacterClass GetCharacterClass();
 };
 

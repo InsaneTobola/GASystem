@@ -22,6 +22,8 @@ AAuraCharacter::AAuraCharacter()
 	bUseControllerRotationRoll = false;
 	bUseControllerRotationYaw = false;
 	
+	CharacterClass = ECharacterClass::Elementalist;
+	
 	MagicComponent = CreateDefaultSubobject<UAuraMagicComponent>("MagicComponent");
 }
 

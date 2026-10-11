@@ -61,6 +61,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "GAS|Messages")
 	FMessageWidgetRowSignature MessageWidgetRowDelegate;
 	
+	UPROPERTY(BlueprintAssignable, Category = "GAS|XP")
+	FOnAttributeChangedSignature OnXPPercentChangedDelegate;
+	
 protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget Data")
@@ -68,6 +71,8 @@ protected:
 	
 	template<typename T>
 	T* GetDataTableRowByTag(UDataTable* DataTable, const  FGameplayTag& Tag);
+	
+	void OnXPChanged(int32 NewXP) const;
 	
 };
 

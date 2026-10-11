@@ -6,7 +6,6 @@
 #include "Character/AuraCharacterBase.h"
 #include "Interaction/EnemyInterface.h"
 #include "UI/WidgetController/OverlayWidgetController.h"
-#include "Data/CharacterClassInfo.h"
 #include "Perception/AIPerceptionTypes.h"
 #include "AI/AIAuraThreatTypes.h"
 #include "Navigation/PathFollowingComponent.h"
@@ -181,8 +180,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character Class Default")
     int32 Level = 1;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character Class Default")
-    EcharacterClass CharacterClass = EcharacterClass::Warrior;
+   
 	
     // ==========================================
     // Components

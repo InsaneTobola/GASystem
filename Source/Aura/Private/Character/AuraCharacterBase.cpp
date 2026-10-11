@@ -38,6 +38,11 @@ void AAuraCharacterBase::Die()
 	MulticastHandleDeath();
 }
 
+ECharacterClass AAuraCharacterBase::GetCharacterClass_Implementation()
+{ 
+	return CharacterClass;
+}
+
 void AAuraCharacterBase::MulticastHandleDeath_Implementation()
 {
 	Weapon->SetSimulatePhysics(true);
