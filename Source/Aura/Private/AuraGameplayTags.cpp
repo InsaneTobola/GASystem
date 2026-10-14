@@ -53,19 +53,19 @@ void FAuraGameplayTags::InitializeNativeGameplayTags()
 	 * Damage Resistances
 	 */
 	GameplayTags.Attributes_Resistance_Fire = UGameplayTagsManager::Get().AddNativeGameplayTag(
-		FName("Resistance.Fire"), 
+		FName("Attributes.Resistance.Fire"), 
 		FString("Fire Resistance")
 		);
 	GameplayTags.Attributes_Resistance_Water = UGameplayTagsManager::Get().AddNativeGameplayTag(
-		FName("Resistance.Water"), 
+		FName("Attributes.Resistance.Water"), 
 		FString("Water Resistance")
 		);
 	GameplayTags.Attributes_Resistance_Earth = UGameplayTagsManager::Get().AddNativeGameplayTag(
-		FName("Resistance.Earth"), 
+		FName("Attributes.Resistance.Earth"), 
 		FString("Earth Resistance")
 		);
 	GameplayTags.Attributes_Resistance_Air = UGameplayTagsManager::Get().AddNativeGameplayTag(
-		FName("Resistance.Air"), 
+		FName("Attributes.Resistance.Air"), 
 		FString("Air Resistance")
 		);
 	
@@ -77,6 +77,15 @@ void FAuraGameplayTags::InitializeNativeGameplayTags()
 	GameplayTags.DamageTypesToResistances.Add(GameplayTags.Damage_Water, GameplayTags.Attributes_Resistance_Water);
 	GameplayTags.DamageTypesToResistances.Add(GameplayTags.Damage_Earth, GameplayTags.Attributes_Resistance_Earth);
 	GameplayTags.DamageTypesToResistances.Add(GameplayTags.Damage_Air, GameplayTags.Attributes_Resistance_Air);
+	
+	/*
+	 * Map of Damage Types to Resistance
+	 */
+	
+	GameplayTags.Attributes_Meta_IncomingXP = UGameplayTagsManager::Get().AddNativeGameplayTag(
+	FName("Attributes.Meta.IncomingXP"), 
+	FString("Meta IncomingXP")
+	);
 	
 	/*
 	 *Secondary Attributes

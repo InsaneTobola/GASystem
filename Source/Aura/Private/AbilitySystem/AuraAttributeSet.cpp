@@ -152,16 +152,7 @@ void UAuraAttributeSet::PostGameplayEffectExecute(
     if (Data.EvaluatedData.Attribute == GetHealthAttribute())
     {
         SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
-
-        UE_LOG(
-            LogTemp,
-            Log,
-            TEXT("Change Health on : %s, Health %f"),
-            *Props.TargetAvatarActor->GetName(),
-            GetHealth()
-        );
     }
-
     if (Data.EvaluatedData.Attribute == GetManaAttribute())
     {
         SetMana(FMath::Clamp(GetMana(), 0.0f, GetMaxMana()));
@@ -236,6 +227,12 @@ void UAuraAttributeSet::PostGameplayEffectExecute(
                 bCriticalHit
             );
         }
+    	if (Data.EvaluatedData.Attribute == GetIncomingXPAttribute())
+    	{
+    		const float LocalIncomingXP = GetIncomingXP();
+    		SetIncomingXP(0.f);
+    		UE_LOG(LogTemp, Log, TEXT("Incoming XP: %f"), LocalIncomingXP);
+    	}
     }
 }
 

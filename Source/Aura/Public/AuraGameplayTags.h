@@ -48,6 +48,8 @@ public:
 	FGameplayTag Attributes_Resistance_Earth;
 	FGameplayTag Attributes_Resistance_Air;
 	
+	FGameplayTag Attributes_Meta_IncomingXP;
+	
 	FGameplayTag InputTag_Q;
 	FGameplayTag InputTag_E;
 	FGameplayTag InputTag_R;
