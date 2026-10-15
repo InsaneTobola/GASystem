@@ -180,6 +180,49 @@ void AAuraEnemy::Tick(float DeltaTime)
 	}
 }
 
+bool AAuraEnemy::IsTargetInAttackRange() const
+{
+	if (!CurrentTarget || !CombatProfile)
+	{
+		return false;
+	}
+
+	const float Distance = FVector::Dist(
+		GetActorLocation(),
+		CurrentTarget->GetActorLocation()
+	);
+
+	return Distance <= CombatProfile->AttackRange;
+}
+
+void AAuraEnemy::FaceCurrentTarget()
+{
+	if (!CurrentTarget)
+	{
+		return;
+	}
+	bIsFacingCurrentTarget = true;
+}
+
+bool AAuraEnemy::IsFacingCurrentTarget() const
+{
+	if (!CurrentTarget)
+	{
+		return false;
+	}
+	FVector Direction = CurrentTarget->GetActorLocation() - GetActorLocation();
+	Direction.Z = 0.f;
+	
+	if (Direction.IsNearlyZero())
+	{
+		return true;
+	}
+	const FRotator TargetRotation = Direction.Rotation();
+	const float DeltaYaw = FMath::Abs(FMath::FindDeltaAngleDegrees(GetActorRotation().Yaw,TargetRotation.Yaw));
+
+	return DeltaYaw <= FacingTolerance;
+}
+
 void AAuraEnemy::HighlightActor()
 {
 	
@@ -194,7 +237,7 @@ void AAuraEnemy::UnHighlightActor()
 	GetMesh()->SetRenderCustomDepth(false);
 	Weapon->SetRenderCustomDepth(false);
 }
-int32 AAuraEnemy::GetPlayerLevel()
+int32 AAuraEnemy::GetPlayerLevel_Implementation()
 {
 	return Level;
 }
@@ -203,21 +246,6 @@ void AAuraEnemy::Die()
 {
 	SetLifeSpan(LifeSpan);
 	Super::Die();
-}
-
-bool AAuraEnemy::IsTargetInAttackRange() const
-{
-	if (!CurrentTarget || !CombatProfile)
-	{
-		return false;
-	}
-
-	const float Distance = FVector::Dist(
-		GetActorLocation(),
-		CurrentTarget->GetActorLocation()
-	);
-
-	return Distance <= CombatProfile->AttackRange;
 }
 
 void AAuraEnemy::HandleDamageReceived(AActor* SourceActor)
@@ -251,33 +279,6 @@ void AAuraEnemy::HandlePlayerDetectedFromGroup(AActor* Player)
 	HandlePlayerDetected(Player);
 }
 
-void AAuraEnemy::FaceCurrentTarget()
-{
-	if (!CurrentTarget)
-	{
-		return;
-	}
-	bIsFacingCurrentTarget = true;
-}
-
-bool AAuraEnemy::IsFacingCurrentTarget() const
-{
-	if (!CurrentTarget)
-	{
-		return false;
-	}
-	FVector Direction = CurrentTarget->GetActorLocation() - GetActorLocation();
-	Direction.Z = 0.f;
-	
-	if (Direction.IsNearlyZero())
-	{
-		return true;
-	}
-	const FRotator TargetRotation = Direction.Rotation();
-	const float DeltaYaw = FMath::Abs(FMath::FindDeltaAngleDegrees(GetActorRotation().Yaw,TargetRotation.Yaw));
-
-	return DeltaYaw <= FacingTolerance;
-}
 
 void AAuraEnemy::ReceiveThreatAlert(const FThreatAlert& Alert)
 {

@@ -13,6 +13,7 @@
 #include "AI/AIAuraThreatTypes.h"
 #include "Character/AuraEnemy.h"
 #include "Interaction/CombatInterface.h"
+#include "Interaction/PlayerInterface.h"
 #include "Player/AuraPlayerController.h"
 
 
@@ -172,36 +173,23 @@ void UAuraAttributeSet::PostGameplayEffectExecute(
 
             if (bFatal)
             {
-                ICombatInterface* CombatInterface =
-                    Cast<ICombatInterface>(Props.TargetAvatarActor);
-
+                ICombatInterface* CombatInterface = Cast<ICombatInterface>(Props.TargetAvatarActor);
                 if (CombatInterface)
                 {
                     CombatInterface->Die();
                 }
+            	SendXPEvent(Props);
             }
             else
             {
-                if (AAuraEnemy* Enemy =
-                    Cast<AAuraEnemy>(Props.TargetAvatarActor))
+                if (AAuraEnemy* Enemy = Cast<AAuraEnemy>(Props.TargetAvatarActor))
                 {
                     if (Enemy->HasAuthority())
                     {
-                        if (UAuraThreatSubsystem* ThreatSubsystem =
-                            Enemy->GetWorld()->GetSubsystem<UAuraThreatSubsystem>())
+                        if (UAuraThreatSubsystem* ThreatSubsystem = Enemy->GetWorld()->GetSubsystem<UAuraThreatSubsystem>())
                         {
-                            const FVector ThreatLocation =
-                                IsValid(Props.SourceAvatarActor)
-                                ? Props.SourceAvatarActor->GetActorLocation()
-                                : Enemy->GetActorLocation();
-
-                            ThreatSubsystem->ReportThreatForEnemy(
-                                Enemy,
-                                Props.SourceAvatarActor,
-                                ThreatLocation,
-                                EThreatType::Damage,
-                                false
-                            );
+                            const FVector ThreatLocation = IsValid(Props.SourceAvatarActor)? Props.SourceAvatarActor->GetActorLocation(): Enemy->GetActorLocation();
+                            ThreatSubsystem->ReportThreatForEnemy(Enemy,Props.SourceAvatarActor,ThreatLocation,EThreatType::Damage,false);
                         	Enemy->HandleDamageReceived(Props.SourceAvatarActor);
                         }
                     }
@@ -211,29 +199,37 @@ void UAuraAttributeSet::PostGameplayEffectExecute(
                 TagContainer.AddTag(FAuraGameplayTags::Get().HitReact);
                 Props.TargetASC->TryActivateAbilitiesByTag(TagContainer);
             }
-
-            const bool bBlock =
-                UAuraAbilitySystemLibrary::IsBlockedHit(
-                    Props.EffectContextHandle);
-
-            const bool bCriticalHit =
-                UAuraAbilitySystemLibrary::IsCriticalHit(
-                    Props.EffectContextHandle);
-
-            ShowFloatingText(
-                Props,
-                LocalIncomingDamage,
-                bBlock,
-                bCriticalHit
-            );
+            const bool bBlock =UAuraAbilitySystemLibrary::IsBlockedHit(Props.EffectContextHandle);
+            const bool bCriticalHit =UAuraAbilitySystemLibrary::IsCriticalHit(Props.EffectContextHandle);
+            ShowFloatingText(Props, LocalIncomingDamage, bBlock, bCriticalHit);
         }
-    	if (Data.EvaluatedData.Attribute == GetIncomingXPAttribute())
-    	{
-    		const float LocalIncomingXP = GetIncomingXP();
-    		SetIncomingXP(0.f);
-    		UE_LOG(LogTemp, Log, TEXT("Incoming XP: %f"), LocalIncomingXP);
-    	}
     }
+	if (Data.EvaluatedData.Attribute == GetIncomingXPAttribute())
+	{
+		const float LocalIncomingXP = GetIncomingXP();
+		SetIncomingXP(0.f);
+		
+		if (Props.SourceCharacter->Implements<UPlayerInterface>())
+		{
+			IPlayerInterface::Execute_AddToXP(Props.SourceCharacter, LocalIncomingXP);
+		}
+	}
+}
+
+void UAuraAttributeSet::SendXPEvent(const FEffectProperties& Props)
+{
+	if (Props.TargetCharacter->Implements<UCombatInterface>())
+	{
+		const int32 TargetLevel = ICombatInterface::Execute_GetPlayerLevel(Props.TargetCharacter);
+		const ECharacterClass TargetClass = ICombatInterface::Execute_GetCharacterClass(Props.TargetCharacter);
+		const int32 XPReward = UAuraAbilitySystemLibrary::GetXPRewardForClassAndLevel(Props.TargetCharacter, TargetClass, TargetLevel);
+		
+		const FAuraGameplayTags& GameplayTags = FAuraGameplayTags::Get();
+		FGameplayEventData Payload;
+		Payload.EventTag = GameplayTags.Attributes_Meta_IncomingXP;
+		Payload.EventMagnitude = XPReward;
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(Props. SourceCharacter, GameplayTags.Attributes_Meta_IncomingXP, Payload);
+	}
 }
 
 void UAuraAttributeSet::ShowFloatingText(const FEffectProperties& Props, float Damage, bool bBlockedHit, bool bCriticalHit) const 

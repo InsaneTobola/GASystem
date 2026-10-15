@@ -29,8 +29,14 @@ float UMMC_MaxHealth::CalculateBaseMagnitude_Implementation(const FGameplayEffec
 	GetCapturedAttributeMagnitude(EarthDef, Spec, EvaluationParameters, Earth );
 	Earth = FMath::Max<float>(Earth, 0.f);
 	
-	ICombatInterface* CombatInterface = Cast<ICombatInterface>(Spec.GetContext(). GetSourceObject());
-	const int32 PlayerLevel = CombatInterface->GetPlayerLevel();
+	int32 PlayerLevel = 1;
+
+	UObject* SourceObject = Spec.GetContext().GetSourceObject();
+
+	if (IsValid(SourceObject) && SourceObject->Implements<UCombatInterface>())
+	{
+		PlayerLevel = ICombatInterface::Execute_GetPlayerLevel(SourceObject);
+	}
 	
 	return 430.f + 5.f * Earth + 20.0f * PlayerLevel;
 }
