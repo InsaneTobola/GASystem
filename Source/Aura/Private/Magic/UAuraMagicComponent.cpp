@@ -1,9 +1,9 @@
 #include "Magic/UAuraMagicComponent.h"
-#include "HAL/PlatformTime.h"
 #include "Magic/MagicGestureValidator.h"
 #include "Magic/MagicValidationSettings.h"
 #include "Magic/MagicPointCloudRecognizer.h"
 #include "Magic/MagicPatternDefinition.h"
+#include "HAL/PlatformTime.h"
 
 UAuraMagicComponent::UAuraMagicComponent()
 {
@@ -210,6 +210,17 @@ FMagicRecognitionResult UAuraMagicComponent::RecognizeCurrentGesture() const
 		{
 			continue;
 		}
+		
+		if (Pattern->Element != SelectedElement)
+		{
+			continue;
+		}
+		
+		if (!FMagicGestureValidator::ValidateAgainstPatternRules(Gesture,Pattern->ValidationRules))
+		{
+			continue;
+		}
+		
 		TArray<FMagicPointCloudTemplate> RuntimeTemplates;
 		Pattern->BuildRuntimeTemplates(RuntimeTemplates);
 
@@ -217,8 +228,7 @@ FMagicRecognitionResult UAuraMagicComponent::RecognizeCurrentGesture() const
 		{
 			continue;
 		}
-		const FMagicRecognitionResult PatternResult = FMagicPointCloudRecognizer::Recognize(Candidate,RuntimeTemplates,Pattern->MinimumSimilarityScore
-			);
+		const FMagicRecognitionResult PatternResult = FMagicPointCloudRecognizer::Recognize(Candidate,RuntimeTemplates,Pattern->MinimumSimilarityScore);
 
 		if (!PatternResult.bMatchFound)
 		{

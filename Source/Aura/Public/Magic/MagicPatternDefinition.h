@@ -52,6 +52,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recognition",meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float MinimumSimilarityScore = 0.30f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Validation")
+    FMagicPatternValidationRules ValidationRules;
+    
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Templates",meta = (TitleProperty = "TemplateId"))
     TArray<FMagicPatternTemplate> Templates;
 

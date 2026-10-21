@@ -133,9 +133,8 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 	// Capture BlockChance on Target, and determine if there was a successful Block
 	float TargetBlockChance = 0.f;
 	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().BlockChanceDef,EvaluationParameters,TargetBlockChance);
-	TargetBlockChance = FMath::Max<float>(TargetBlockChance, 0.f);
-	
-	const bool bBlocked = FMath::RandRange(0.f, 100.f) < TargetBlockChance;
+	TargetBlockChance = FMath::Clamp(TargetBlockChance, 0.f, 100.f);
+	const bool bBlocked = FMath::FRand() * 100.f < TargetBlockChance;
 	
 	FGameplayEffectContextHandle EffectContextHandle = Spec.GetContext();
 	FGameplayEffectContext* Context = EffectContextHandle.Get();
@@ -169,11 +168,11 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 	
 	float SourceCriticalHitChance = 0.f;
 	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().CriticalHitChanceDef,EvaluationParameters,SourceCriticalHitChance);
-	SourceCriticalHitChance = FMath::Max(SourceCriticalHitChance, 0.f);
+	SourceCriticalHitChance = FMath::Clamp(SourceCriticalHitChance, 0.f, 100.f);
 
 	float SourceCriticalHitDamage = 0.f;
 	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().CriticalHitDamageDef,EvaluationParameters,SourceCriticalHitDamage);
-	SourceCriticalHitDamage = FMath::Max(SourceCriticalHitDamage, 0.f);
+	SourceCriticalHitDamage = FMath::Clamp(SourceCriticalHitDamage, 1.f, 3.f);
 	
 	float TargetCriticalHitResistance = 0.f;
 	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().CriticalHitResistanceDef,EvaluationParameters,TargetCriticalHitResistance);
@@ -182,8 +181,8 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 	const FRealCurve* CriticalHitResistanceCurve = CharacterClassInfo->DamageCalculationCoefficient->FindCurve(FName("CriticalHitResistance"), FString());
 	const float CriticalHitResistanceCoefficient = CriticalHitResistanceCurve->Eval(static_cast<float>(TargetPlayerLevel));
 	
-	const float EffectiveCriticalHitChance = FMath::Max(SourceCriticalHitChance - TargetCriticalHitResistance * CriticalHitResistanceCoefficient, 0.f);
-	const bool bCriticalHit = FMath::RandRange(0.f, 100.f) < EffectiveCriticalHitChance;
+	const float EffectiveCriticalHitChance = FMath::Max(SourceCriticalHitChance - TargetCriticalHitResistance * CriticalHitResistanceCoefficient, 0.f, 100.f);
+	const bool bCriticalHit = FMath::FRand() * 100.f < EffectiveCriticalHitChance;
 	
 	UAuraAbilitySystemLibrary::SetIsCriticalHit(EffectContextHandle, bCriticalHit);
 	

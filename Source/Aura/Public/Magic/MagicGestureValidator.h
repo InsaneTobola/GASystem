@@ -11,6 +11,7 @@ public:
 
 	static FMagicValidationResult Validate(const FMagicGesture& Gesture,const UMagicValidationSettings& Settings);
 
+	static bool ValidateAgainstPatternRules(const FMagicGesture& Gesture,const FMagicPatternValidationRules& Rules);
 private:
 
 	static bool ValidateStrokeCount(const FMagicGesture& Gesture,const UMagicValidationSettings& Settings,EMagicValidationFailure& OutFailure);

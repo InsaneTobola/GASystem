@@ -12,6 +12,7 @@ AddAttributeCapture(FireDef, UAuraAttributeSet::GetFireAttribute());
 float UMMC_CriticalHitDamage::CalculateBaseMagnitude_Implementation(const FGameplayEffectSpec& Spec) const
 {
 	const float Fire = GetCapturedValue(FireDef, Spec);
-	
-	return Fire * 1.5f;
+	const float ClampedFire = FMath::Clamp(Fire, 0.f, 40.f);
+
+	return 1.f + (ClampedFire / 20.f);
 }

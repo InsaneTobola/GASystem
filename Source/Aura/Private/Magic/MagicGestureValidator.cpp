@@ -53,6 +53,67 @@ FMagicValidationResult FMagicGestureValidator::Validate(const FMagicGesture& Ges
     return Result;
 }
 
+bool FMagicGestureValidator::ValidateAgainstPatternRules(const FMagicGesture& Gesture, const FMagicPatternValidationRules& Rules)
+{
+    const int32 StrokeCount = Gesture.GetStrokeCount();
+    const int32 TotalPointCount = Gesture.GetTotalPointCount();
+
+    if (StrokeCount < Rules.MinStrokeCount || StrokeCount > Rules.MaxStrokeCount)
+    {
+        return false;
+    }
+
+    if (TotalPointCount < Rules.MinPointCount || TotalPointCount > Rules.MaxPointCount)
+    {
+        return false;
+    }
+
+    if (Gesture.Strokes.Num() == 0)
+    {
+        return false;
+    }
+    const float TotalPathLength = CalculatePathLength(Gesture);
+
+    if (TotalPathLength < Rules.MinPathLength || TotalPathLength > Rules.MaxPathLength)
+    {
+        return false;
+    }
+
+    for (const FMagicStroke& Stroke : Gesture.Strokes)
+    {
+        const float StrokePathLength = CalculateStrokePathLength(Stroke);
+
+        if (StrokePathLength < Rules.MinStrokePathLength || StrokePathLength > Rules.MaxStrokePathLength)
+        {
+            return false;
+        }
+    }
+
+    FVector2D BoundsMin;
+    FVector2D BoundsMax;
+
+    CalculateBoundingBox(Gesture,BoundsMin,BoundsMax);
+
+    const FVector2D BoundsSize = BoundsMax - BoundsMin;
+
+    if (BoundsSize.X < Rules.MinWidth || BoundsSize.X > Rules.MaxWidth)
+    {
+        return false;
+    }
+
+    if (BoundsSize.Y < Rules.MinHeight || BoundsSize.Y > Rules.MaxHeight)
+    {
+        return false;
+    }
+    const float AspectRatio = CalculateAspectRatio(BoundsSize);
+    if (AspectRatio < Rules.MinAspectRatio || AspectRatio > Rules.MaxAspectRatio)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 
 bool FMagicGestureValidator::ValidateStrokeCount(const FMagicGesture& Gesture,   const UMagicValidationSettings& Settings,    EMagicValidationFailure& OutFailure)
 {

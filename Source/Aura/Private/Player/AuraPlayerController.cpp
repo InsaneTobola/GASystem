@@ -95,6 +95,13 @@ void AAuraPlayerController::StartMagicDrawingMode()
 
 void AAuraPlayerController::StopMagicDrawingMode()
 {
+	if (UAuraMagicComponent* MagicComponent = GetMagicComponent())
+	{
+		if (MagicComponent->IsDrawing())
+		{
+			MagicComponent->StopDrawing();
+		}
+	}
 	bMagicDrawingMode = false;
 
 	if (MagicDrawingWidget)

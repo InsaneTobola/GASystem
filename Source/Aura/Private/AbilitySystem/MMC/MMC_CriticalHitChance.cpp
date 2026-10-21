@@ -15,5 +15,10 @@ float UMMC_CriticalHitChance::CalculateBaseMagnitude_Implementation(const FGamep
 	const float Fire = GetCapturedValue(FireDef, Spec);
 	const float Air = GetCapturedValue(AirDef, Spec);
 
-	return Fire * Air;
+	const float ClampedFire = FMath::Clamp(Fire, 0.f, 40.f);
+	const float ClampedAir = FMath::Clamp(Air, 0.f, 40.f);
+
+	const float CombinedElementalPoints = ClampedFire + ClampedAir;
+
+	return FMath::Clamp(0.0125f * FMath::Square(CombinedElementalPoints),0.f,80.f);
 }

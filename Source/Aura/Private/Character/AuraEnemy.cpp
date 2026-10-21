@@ -305,21 +305,14 @@ void AAuraEnemy::ReceiveThreatAlert(const FThreatAlert& Alert)
 
 void AAuraEnemy::ResolvePendingThreat()
 {
-	if (IsValid(PendingThreatWitness))
-	{
-		StartChasing(PendingThreatWitness);
-		PendingThreatWitness = nullptr;
-		PendingThreatSource = nullptr;
-		return;
-	}
 	AAIController* AIController = Cast<AAIController>(GetController());
-	const bool bHasValidSource =IsValid(PendingThreatSource) && AIController != nullptr;
+	const bool bHasValidSource = IsValid(PendingThreatSource) &&AIController != nullptr;
 	bool bCanSeeThreatSource = false;
 
 	if (bHasValidSource)
 	{
 		const float DistanceSquared = FVector::DistSquared(GetActorLocation(),PendingThreatSource->GetActorLocation());
-		bCanSeeThreatSource =DistanceSquared <= FMath::Square(SightRadius) &&AIController->LineOfSightTo(PendingThreatSource);
+		bCanSeeThreatSource = DistanceSquared <= FMath::Square(SightRadius) &&AIController->LineOfSightTo(PendingThreatSource);
 	}
 
 	if (bCanSeeThreatSource)
@@ -330,10 +323,12 @@ void AAuraEnemy::ResolvePendingThreat()
 	{
 		CurrentTarget = nullptr;
 		TargetPawn = nullptr;
+
 		OnThreatSearch();
 	}
 
 	PendingThreatSource = nullptr;
+	PendingThreatWitness = nullptr;
 }
 
 void AAuraEnemy::StartChasing(AActor* TargetActor)
@@ -461,7 +456,6 @@ void AAuraEnemy::EndPlay(const EEndPlayReason::Type EndPlayReason)
 			ThreatSubsystem->UnregisterEnemy(this);
 		}
 	}
-
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -473,19 +467,15 @@ void AAuraEnemy::FaceThreatLocation()
 void AAuraEnemy::BeginPlay()
 {
 	Super::BeginPlay();
-	
 	StateTreeComponent = FindComponentByClass<UStateTreeComponent>();
 	
 	if (HasAuthority() && !AlertGroupId.IsNone())
 	{
-		if (UAuraThreatSubsystem* ThreatSubsystem =
-			GetWorld()->GetSubsystem<UAuraThreatSubsystem>())
+		if (UAuraThreatSubsystem* ThreatSubsystem = GetWorld()->GetSubsystem<UAuraThreatSubsystem>())
 		{
 			ThreatSubsystem->RegisterEnemy(this);
 		}
 	}
-	
-	
 	GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 	InitAbilityActorInfo();
 
@@ -497,12 +487,7 @@ void AAuraEnemy::BeginPlay()
 	if (HasAuthority())
 	{
 		InitializeDefaultAttributes();
-
-		UAuraAbilitySystemLibrary::GiveStartupAbilities(
-			this,
-			AbilitySystemComponent
-		);
-
+		UAuraAbilitySystemLibrary::GiveStartupAbilities(this,AbilitySystemComponent);
 		UAuraAbilitySystemLibrary::GiveCombatAbilities(this, AbilitySystemComponent, CombatProfile);
 	}
 	
@@ -525,11 +510,7 @@ void AAuraEnemy::BeginPlay()
 				OnMaxHealthChanged.Broadcast(Data.NewValue);
 			}	
 		);
-		
-		AbilitySystemComponent->RegisterGameplayTagEvent(FAuraGameplayTags::Get().HitReact, EGameplayTagEventType::NewOrRemoved).AddUObject(
-		this, 
-		&AAuraEnemy::HitReactTagChanged
-		);
+		AbilitySystemComponent->RegisterGameplayTagEvent(FAuraGameplayTags::Get().HitReact, EGameplayTagEventType::NewOrRemoved).AddUObject(this, &AAuraEnemy::HitReactTagChanged);
 		
 		OnHealthChanged.Broadcast(AuraAS->GetHealth());
 		OnMaxHealthChanged.Broadcast(AuraAS->GetMaxHealth());
@@ -545,9 +526,7 @@ void AAuraEnemy::HitReactTagChanged(const FGameplayTag CallbackTag, int32 NewCou
 void AAuraEnemy::InitAbilityActorInfo()
 {
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
-	
-	CastChecked<UAuraAbilitySystemComponent>(AbilitySystemComponent)
-	   ->AbilityActorInfoSet();
+	CastChecked<UAuraAbilitySystemComponent>(AbilitySystemComponent)->AbilityActorInfoSet();
 }
 void AAuraEnemy::InitializeDefaultAttributes() const
 {
@@ -571,26 +550,18 @@ void AAuraEnemy::OnTargetPerceptionUpdated(AActor* Actor,FAIStimulus Stimulus)
 	if (Stimulus.WasSuccessfullySensed())
 	{
 		TargetPawn = Player;
-
 		UpdateLastKnownTargetLocation(Player);
 		
 		HandlePlayerDetected(Player);
 		if (HasAuthority() && !AlertGroupId.IsNone())
 		{
-			if (UAuraThreatSubsystem* ThreatSubsystem =
-				GetWorld()->GetSubsystem<UAuraThreatSubsystem>())
+			if (UAuraThreatSubsystem* ThreatSubsystem = GetWorld()->GetSubsystem<UAuraThreatSubsystem>())
 			{
-				ThreatSubsystem->ReportThreatForEnemy(
-					this,
-					Player,
-					Player->GetActorLocation(),
-					EThreatType::Sight,
-					false
-				);
+				ThreatSubsystem->ReportThreatForEnemy(this,Player,Player->GetActorLocation(),EThreatType::Sight,false);
 			}
 		}
 	}
-	else
+	else if (Actor == CurrentTarget)
 	{
 		HandlePlayerLost();
 	}
