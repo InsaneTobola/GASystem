@@ -27,47 +27,43 @@ void AAuraEffectActor::ApplyEffectToTarget(AActor* TargetActor, TSubclassOf<UGam
 	{
 		return;
 	}
+
 	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
-	if (TargetASC == nullptr) return;
-	
-	UE_LOG(
-	LogTemp,
-	Warning,
-	TEXT("APPLY EFFECT | Target=%s | Effect=%s | Authority=%d"),
-	*GetNameSafe(TargetActor),
-	*GetNameSafe(GameplayEffectClass),
-	HasAuthority()
-);
-	
-	check(GameplayEffectClass);
-	
+
+	if (!IsValid(TargetASC))
+	{
+		return;
+	}
+
 	FGameplayEffectContextHandle EffectContextHandle = TargetASC->MakeEffectContext();
 	EffectContextHandle.AddSourceObject(this);
-	const FGameplayEffectSpecHandle EffectSpecHandle = TargetASC->MakeOutgoingSpec(GameplayEffectClass, ActorLevel, EffectContextHandle);
+	const FGameplayEffectSpecHandle EffectSpecHandle = TargetASC->MakeOutgoingSpec(GameplayEffectClass,ActorLevel,EffectContextHandle);
 	
-	UE_LOG(
-	LogTemp,
-	Warning,
-	TEXT("SPEC | Valid=%d | Level=%.2f"),
-	EffectSpecHandle.IsValid(),
-	ActorLevel
+	if (!EffectSpecHandle.IsValid() || !EffectSpecHandle.Data.IsValid())
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("AuraEffectActor: Failed to create GameplayEffectSpec.")
+		);
+
+		return;
+	}
 	
-);
+	const UGameplayEffect* EffectDefinition = EffectSpecHandle.Data->Def.Get();
+
+	if (!IsValid(EffectDefinition))
+	{
+		UE_LOG(LogTemp,Error,TEXT("AuraEffectActor: GameplayEffect definition is invalid."));
+		return;
+	}
 	const FActiveGameplayEffectHandle ActiveEffectHandle = TargetASC->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
-	
-	UE_LOG(
-	LogTemp,
-	Warning,
-	TEXT("EFFECT APPLIED | HandleValid=%d"),
-	ActiveEffectHandle.IsValid()
-);
-	
-	const bool bIsInfinite = EffectSpecHandle.Data.Get()->Def.Get()->DurationPolicy == EGameplayEffectDurationType::Infinite;
-	if (bIsInfinite && InfiniteEffectRemovalPolicy == EEffectRemovalPolicy::RemoveOnEndOverlap)
+
+	if (EffectDefinition->DurationPolicy == EGameplayEffectDurationType::Infinite && InfiniteEffectRemovalPolicy ==
+			EEffectRemovalPolicy::RemoveOnEndOverlap && ActiveEffectHandle.IsValid())
 	{
 		ActiveEffectHandles.FindOrAdd(TargetASC).Add(ActiveEffectHandle);
 	}
-	
 }
 
 void AAuraEffectActor::OnOverlap(AActor* TargetActor)

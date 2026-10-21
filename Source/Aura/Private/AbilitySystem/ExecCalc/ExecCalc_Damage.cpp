@@ -86,6 +86,12 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 	AActor* SourceAvatar = SourceASC ? SourceASC->GetAvatarActor() : nullptr;
 	AActor* TargetAvatar = TargetASC ? TargetASC->GetAvatarActor() : nullptr;
 	
+	if (!IsValid(SourceAvatar) || !IsValid(TargetAvatar))
+	{
+		UE_LOG(LogTemp,Error,TEXT("ExecCalc_Damage: SourceAvatar or TargetAvatar is invalid."));
+		return;
+	}
+		
 	int32 SourcePlayerLevel = 1.f;
 	if (SourceAvatar->Implements<UCombatInterface>())
 	{
@@ -155,16 +161,37 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().ArmorPenetrationDef,EvaluationParameters,SourceArmorPenetration);
 	SourceArmorPenetration = FMath::Max<float>(SourceArmorPenetration, 0.f);
 	
-	const UCharacterClassInfo* CharacterClassInfo = UAuraAbilitySystemLibrary::GetCharacterClassInfo(SourceAvatar);
-	const FRealCurve* ArmorPenetrationCurve = CharacterClassInfo->DamageCalculationCoefficient->FindCurve(FName("ArmorPenetration"), FString());
+	const UCharacterClassInfo* CharacterClassInfo =
+	UAuraAbilitySystemLibrary::GetCharacterClassInfo(SourceAvatar);
+
+	if (!IsValid(CharacterClassInfo) || !IsValid(CharacterClassInfo->DamageCalculationCoefficient.Get()))
+	{
+		UE_LOG(LogTemp,Error,TEXT("ExecCalc_Damage: CharacterClassInfo or DamageCalculationCoefficient is missing."));
+
+		return;
+	}
+	const UCurveTable* DamageCoefficientTable = CharacterClassInfo->DamageCalculationCoefficient.Get();
+	const FRealCurve* ArmorPenetrationCurve = DamageCoefficientTable->FindCurve(FName("ArmorPenetration"),FString());
+	const FRealCurve* EffectiveArmorCurve = DamageCoefficientTable->FindCurve(FName("EffectiveArmor"),FString());
+	const FRealCurve* CriticalHitResistanceCurve = DamageCoefficientTable->FindCurve(FName("CriticalHitResistance"),FString());
+
+	if (!ArmorPenetrationCurve || !EffectiveArmorCurve || !CriticalHitResistanceCurve)
+	{
+		UE_LOG(LogTemp,Error,TEXT("ExecCalc_Damage: A required damage calculation curve is missing."));
+		return;
+	}
+
+	// Armor penetration
 	const float ArmorPenetrationCoefficient = ArmorPenetrationCurve->Eval(static_cast<float>(SourcePlayerLevel));
+	const float ArmorPenetrationPercent = FMath::Clamp(SourceArmorPenetration * ArmorPenetrationCoefficient,0.f,100.f);
+
+	// Effective armor after penetration
+	const float EffectiveArmor = TargetArmor * (1.f - ArmorPenetrationPercent / 100.f);
 	
-	const float EffectiveArmor = TargetArmor *= (100 - SourceArmorPenetration * ArmorPenetrationCoefficient) / 100.f;
-	
-	const FRealCurve* EffectiveArmorCurve = CharacterClassInfo->DamageCalculationCoefficient->FindCurve(FName("EffectiveArmor"), FString());
-	const float EffectiveArmorCoefficient = EffectiveArmorCurve->Eval(static_cast<float>(TargetPlayerLevel));
-	
-	Damage *= (100 - EffectiveArmor * EffectiveArmorCoefficient) / 100.f;
+	// Armor damage reduction
+	const float EffectiveArmorCoefficient = FMath::Max(EffectiveArmorCurve->Eval(static_cast<float>(TargetPlayerLevel)),0.f);
+	const float EffectiveArmorPercent = FMath::Clamp(EffectiveArmor * EffectiveArmorCoefficient,0.f,100.f);
+	Damage *= 1.f - EffectiveArmorPercent / 100.f;
 	
 	float SourceCriticalHitChance = 0.f;
 	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().CriticalHitChanceDef,EvaluationParameters,SourceCriticalHitChance);
@@ -177,12 +204,10 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 	float TargetCriticalHitResistance = 0.f;
 	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().CriticalHitResistanceDef,EvaluationParameters,TargetCriticalHitResistance);
 	TargetCriticalHitResistance = FMath::Max(TargetCriticalHitResistance, 0.f);
-
-	const FRealCurve* CriticalHitResistanceCurve = CharacterClassInfo->DamageCalculationCoefficient->FindCurve(FName("CriticalHitResistance"), FString());
-	const float CriticalHitResistanceCoefficient = CriticalHitResistanceCurve->Eval(static_cast<float>(TargetPlayerLevel));
 	
-	const float EffectiveCriticalHitChance = FMath::Max(SourceCriticalHitChance - TargetCriticalHitResistance * CriticalHitResistanceCoefficient, 0.f, 100.f);
-	const bool bCriticalHit = FMath::FRand() * 100.f < EffectiveCriticalHitChance;
+	const float CriticalHitResistanceCoefficient =FMath::Max(CriticalHitResistanceCurve->Eval(static_cast<float>(TargetPlayerLevel)),0.f);
+	const float EffectiveCriticalHitChance = FMath::Clamp(SourceCriticalHitChance -TargetCriticalHitResistance * CriticalHitResistanceCoefficient,0.f,100.f);
+	const bool bCriticalHit =FMath::FRand() * 100.f < EffectiveCriticalHitChance;
 	
 	UAuraAbilitySystemLibrary::SetIsCriticalHit(EffectContextHandle, bCriticalHit);
 	
