@@ -73,7 +73,14 @@ void UOverlayWidgetController::BindCallbacksToDependencies()
 				if (Tag.MatchesTag(MessageTag))
 				{
 					const FUIWidgetRow* Row = GetDataTableRowByTag<FUIWidgetRow>(MessageWidgetDataTable, Tag);
-					MessageWidgetRowDelegate.Broadcast(*Row);
+					if (Row)
+					{
+						MessageWidgetRowDelegate.Broadcast(*Row);
+					}
+					else
+					{
+						UE_LOG(LogTemp,Warning,TEXT("OverlayWidgetController: Missing message row for tag %s."),*Tag.ToString());
+					}
 				}
 			}
 		}	

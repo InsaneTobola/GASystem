@@ -77,13 +77,27 @@ void AAuraCharacterBase::InitAbilityActorInfo()
 
 void AAuraCharacterBase::ApplyEffectToSelf(TSubclassOf<UGameplayEffect> GameplayEffectClass, float Level) const
 {
-	check(IsValid(GetAbilitySystemComponent()));
-	check(GameplayEffectClass);
-	FGameplayEffectContextHandle ContextHandle = GetAbilitySystemComponent()->MakeEffectContext();
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
+
+	if (!IsValid(ASC) || !GameplayEffectClass)
+	{
+		UE_LOG(LogTemp,Error,TEXT("ApplyEffectToSelf: Missing ASC or GameplayEffectClass."));
+
+		return;
+	}
+
+	FGameplayEffectContextHandle ContextHandle =ASC->MakeEffectContext();
 	ContextHandle.AddSourceObject(this);
-	const FGameplayEffectSpecHandle SpecHandle = GetAbilitySystemComponent()->MakeOutgoingSpec(GameplayEffectClass, Level, ContextHandle);
-	GetAbilitySystemComponent()->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), GetAbilitySystemComponent());
-	check(SpecHandle.IsValid());
+	const FGameplayEffectSpecHandle SpecHandle =ASC->MakeOutgoingSpec(GameplayEffectClass,Level,ContextHandle);
+
+	if (!SpecHandle.IsValid() || !SpecHandle.Data.IsValid())
+	{
+		UE_LOG(LogTemp,Error,TEXT("ApplyEffectToSelf: Failed to create GameplayEffectSpec."));
+
+		return;
+	}
+
+	ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 }
 
 void AAuraCharacterBase::InitializeDefaultAttributes() const

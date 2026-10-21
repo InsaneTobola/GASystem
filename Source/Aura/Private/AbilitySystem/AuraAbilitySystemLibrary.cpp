@@ -49,26 +49,53 @@ UAttributeMenuWidgetController* UAuraAbilitySystemLibrary::GetAttributeMenuWidge
 
 void UAuraAbilitySystemLibrary::InitializeDefaultAttributes(const UObject* WorldContextObject, ECharacterClass CharacterClass, float Level, UAbilitySystemComponent* ASC)
 {
-	AActor*AvatarActor = ASC->GetAvatarActor();
-	
-	UCharacterClassInfo* CharacterClassInfo = GetCharacterClassInfo(WorldContextObject);
-	
-	FCharacterClassDefaultInfo ClassDefaultInfo = CharacterClassInfo->GetClassDefaultInfo(CharacterClass);
-	
-	FGameplayEffectContextHandle PrimaryAttributesContextHandle = ASC->MakeEffectContext();
-	PrimaryAttributesContextHandle.AddSourceObject(AvatarActor);
-	const FGameplayEffectSpecHandle PrimaryAttributesSpecHandle = ASC->MakeOutgoingSpec(ClassDefaultInfo.PrimaryAttributes, Level,  PrimaryAttributesContextHandle);
-	ASC->ApplyGameplayEffectSpecToSelf(*PrimaryAttributesSpecHandle.Data.Get());
-	
-	FGameplayEffectContextHandle SecondaryAttributesContextHandle = ASC->MakeEffectContext();
-	SecondaryAttributesContextHandle.AddSourceObject(AvatarActor);
-	const FGameplayEffectSpecHandle SecondaryAttributesSpecHandle = ASC->MakeOutgoingSpec(CharacterClassInfo->SecondaryAttributes, Level, SecondaryAttributesContextHandle);
-	ASC->ApplyGameplayEffectSpecToSelf(*SecondaryAttributesSpecHandle.Data.Get());
-	
-	FGameplayEffectContextHandle VitalAttributesContextHandle = ASC->MakeEffectContext();
-	VitalAttributesContextHandle.AddSourceObject(AvatarActor);
-	const FGameplayEffectSpecHandle VitalAttributesSpecHandle = ASC->MakeOutgoingSpec(CharacterClassInfo->VitalAttributes, Level,  VitalAttributesContextHandle);
-	ASC->ApplyGameplayEffectSpecToSelf(*VitalAttributesSpecHandle.Data.Get());
+ if (!IsValid(ASC))
+    {
+        UE_LOG(LogTemp,Error,TEXT("InitializeDefaultAttributes: ASC is invalid."));
+ 		return;
+    }
+
+    AActor* AvatarActor = ASC->GetAvatarActor();
+
+    if (!IsValid(AvatarActor))
+    {
+        UE_LOG(LogTemp,Error,TEXT("InitializeDefaultAttributes: AvatarActor is invalid."));
+        return;
+    }
+
+    UCharacterClassInfo* CharacterClassInfo = GetCharacterClassInfo(WorldContextObject);
+
+    if (!IsValid(CharacterClassInfo))
+    {
+        UE_LOG(LogTemp,Error,TEXT("InitializeDefaultAttributes: CharacterClassInfo is missing."));
+        return;
+    }
+
+    const FCharacterClassDefaultInfo ClassDefaultInfo =CharacterClassInfo->GetClassDefaultInfo(CharacterClass);
+    auto ApplyEffectToSelf =[ASC, AvatarActor, Level](TSubclassOf<UGameplayEffect> EffectClass)
+        {
+            if (!EffectClass)
+            {
+                UE_LOG(LogTemp,Error,TEXT("InitializeDefaultAttributes: GameplayEffectClass is missing."));
+                return;
+            }
+
+            FGameplayEffectContextHandle ContextHandle =ASC->MakeEffectContext();
+            ContextHandle.AddSourceObject(AvatarActor);
+            const FGameplayEffectSpecHandle SpecHandle =ASC->MakeOutgoingSpec(EffectClass,Level,ContextHandle);
+
+            if (!SpecHandle.IsValid() || !SpecHandle.Data.IsValid())
+            {
+                UE_LOG(LogTemp,Error,TEXT("InitializeDefaultAttributes: Failed to create GameplayEffectSpec."));
+                return;
+            }
+
+            ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+        };
+
+    ApplyEffectToSelf(ClassDefaultInfo.PrimaryAttributes);
+    ApplyEffectToSelf(CharacterClassInfo->SecondaryAttributes);
+    ApplyEffectToSelf(CharacterClassInfo->VitalAttributes);
 }
 
 void UAuraAbilitySystemLibrary::GiveStartupAbilities(const UObject* WorldContextObject, UAbilitySystemComponent* ASC)

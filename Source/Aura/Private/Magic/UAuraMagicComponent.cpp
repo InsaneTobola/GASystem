@@ -149,11 +149,6 @@ FMagicValidationResult UAuraMagicComponent::ConfirmGesture()
 		LastValidatedGesture = CurrentGesture;
 	}
 	
-	if (LastValidationResult.bIsValid)
-	{
-		LastValidatedGesture = CurrentGesture;
-	}
-	
 	return LastValidationResult;
 }
 
@@ -304,7 +299,15 @@ void UAuraMagicComponent::StopDrawing()
 
 void UAuraMagicComponent::ResetMagic()
 {
-	ResetStroke();
+	CurrentGesture.Reset();
+	CurrentStroke.Reset();
+	LastValidatedGesture.Reset();
+	LastValidationResult = FMagicValidationResult();
+
+	bIsStrokeActive = false;
+	bSafetyLimitExceeded = false;
+
+	CurrentGesture.StartTime = static_cast<float>(FPlatformTime::Seconds());
 
 	MagicState = EMagicState::Drawing;
 }

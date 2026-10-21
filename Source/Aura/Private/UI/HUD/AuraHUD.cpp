@@ -32,11 +32,27 @@ UAttributeMenuWidgetController* AAuraHUD::GetAttributeMenuWidgetController(const
 
 void AAuraHUD::InitOverlay(APlayerController* PC, APlayerState* PS, UAbilitySystemComponent* ASC, UAttributeSet* AS)
 {
-	checkf(OverlayWidgetClass, TEXT("Overlay Widget Class uninitialized, please fill out BP_AuraHUD"))
-	checkf(OverlayWidgetControllerClass, TEXT("Overlay Widget Controller Class uninitialized, please fill out BP_AuraHUD"))
-	
+	if (!OverlayWidgetClass || !OverlayWidgetControllerClass)
+	{
+		UE_LOG(LogTemp,Error,TEXT("AuraHUD: OverlayWidgetClass or OverlayWidgetControllerClass is not set."));
+		return;
+	}
 	UUserWidget* Widget = CreateWidget<UUserWidget>(GetWorld(), OverlayWidgetClass);
+
+	if (!IsValid(Widget))
+	{
+		UE_LOG(LogTemp,Error,TEXT("AuraHUD: Failed to create Overlay widget."));
+		return;
+	}
+
 	OverlayWidget = Cast<UAuraUserWidget>(Widget);
+
+	if (!IsValid(OverlayWidget))
+	{
+		UE_LOG(LogTemp,Error,TEXT("AuraHUD: Overlay widget is not a UAuraUserWidget."));
+
+		return;
+	}
 	
 	const FWidgetControllerParams WidgetControllerParams(PC, PS, ASC, AS);
 	UOverlayWidgetController* WidgetController = GetOverlayWidgetController(WidgetControllerParams);
