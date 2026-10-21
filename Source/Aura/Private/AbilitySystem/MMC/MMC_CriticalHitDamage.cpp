@@ -13,5 +13,5 @@ float UMMC_CriticalHitDamage::CalculateBaseMagnitude_Implementation(const FGamep
 {
 	const float Fire = GetCapturedValue(FireDef, Spec);
 	
-	return 0.1f*(Fire/5);
+	return Fire * 1.5f;
 }

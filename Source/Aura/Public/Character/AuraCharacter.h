@@ -39,7 +39,8 @@ public:
 	virtual void AddToPlayerLevels_Implementation(int32 InPlayerLevel) override;
 	virtual void AddToAttributePoints_Implementation(int32 InAttributePoints) override;
 	virtual void AddToSpellPoints_Implementation(int32 InSpellPoints) override;
-	
+	virtual int32 GetAttributePoints_Implementation() const override;
+	virtual int32 GetSpellPoints_Implementation() const override;
 	/** End Player Interface */
 	
 	/** Magic Interface**/

@@ -77,11 +77,15 @@ void AAuraCharacter::AddToXP_Implementation(int32 IxXP)
 
 void AAuraCharacter::LevelUp_Implementation()
 {
+	UE_LOG(LogTemp, Warning, TEXT("=== LEVEL UP START ==="));
+	UE_LOG(LogTemp, Warning, TEXT("Character: %s"), *GetName());
 	MulticastLevelUpParticles();
+	UE_LOG(LogTemp, Warning, TEXT("=== LEVEL UP END ==="));
 }
 
 void AAuraCharacter::MulticastLevelUpParticles_Implementation() const
 {
+	UE_LOG(LogTemp, Warning, TEXT("=== MULTICAST LEVEL UP PARTICLES ==="));
 	if (IsValid(LevelUpNiagraComponent))
 	{
 		const FVector CameraLocation = TopDownCameraComponent->GetComponentLocation();
@@ -89,6 +93,10 @@ void AAuraCharacter::MulticastLevelUpParticles_Implementation() const
 		const FRotator ToCameraRotation = (CameraLocation - NiagaraSystemLocation).Rotation();
 		LevelUpNiagraComponent->SetWorldRotation(ToCameraRotation);
 		LevelUpNiagraComponent->Activate(true);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("LevelUpNiagraComponent INVALID"));
 	}
 }
 
@@ -129,12 +137,30 @@ void AAuraCharacter::AddToPlayerLevels_Implementation(int32 InPlayerLevel)
 
 void AAuraCharacter::AddToAttributePoints_Implementation(int32 InAttributePoints)
 {
-	//
+	AAuraPlayerState* AuraPlayerState = GetPlayerState<AAuraPlayerState>();
+	check(AuraPlayerState);
+	AuraPlayerState->AddToAttributePoints(InAttributePoints);
 }
 
 void AAuraCharacter::AddToSpellPoints_Implementation(int32 InSpellPoints)
 {
-	//
+	AAuraPlayerState* AuraPlayerState = GetPlayerState<AAuraPlayerState>();
+	check(AuraPlayerState);
+	AuraPlayerState->AddToSpellPoints(InSpellPoints);
+}
+
+int32 AAuraCharacter::GetAttributePoints_Implementation() const
+{
+	AAuraPlayerState* AuraPlayerState = GetPlayerState<AAuraPlayerState>();
+	check(AuraPlayerState);
+	return AuraPlayerState->GetAttributePoints();
+}
+
+int32 AAuraCharacter::GetSpellPoints_Implementation() const
+{
+	AAuraPlayerState* AuraPlayerState = GetPlayerState<AAuraPlayerState>();
+	check(AuraPlayerState);
+	return AuraPlayerState->GetSpellPoints();
 }
 
 

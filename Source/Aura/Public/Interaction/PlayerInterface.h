@@ -39,13 +39,19 @@ public:
 	void AddToXP(int32 IxXP);
 	
 	UFUNCTION(BlueprintNativeEvent)
-	void AddToPlayerLevels(int32 IxXP);
+	void AddToPlayerLevels(int32 IxPlayerLevels);
 	
 	UFUNCTION(BlueprintNativeEvent)
-	void AddToAttributePoints(int32 IxXP);
+	void AddToAttributePoints(int32 IxAttributePoints);
 	
 	UFUNCTION(BlueprintNativeEvent)
-	void AddToSpellPoints(int32 IxXP);
+	int32 GetAttributePoints() const;
+	
+	UFUNCTION(BlueprintNativeEvent)
+	void AddToSpellPoints(int32 IxSpellPoints);
+	
+	UFUNCTION(BlueprintNativeEvent)
+	int32 GetSpellPoints() const;
 	
 	UFUNCTION(BlueprintNativeEvent)
 	void LevelUp();
