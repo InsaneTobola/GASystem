@@ -1,16 +1,13 @@
 #include "Actor/AuraAreaSpellField.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
-#include "AbilitySystem/Abilities/AuraAreaSpell.h"
-#include "AbilitySystem/AuraAbilitySystemLibrary.h"
-#include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystem/AuraAttributeSet.h"
 
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
-#include "GameFramework/CharacterMovementComponent.h"
+
 
 #include "Interaction/EnemyInterface.h"
 #include "Materials/MaterialInterface.h"
@@ -144,7 +141,7 @@ void AAuraAreaSpellField::UpdateVisuals()
     {
         const float MeshScale = AreaRadiusCm / 50.f;
 
-        AreaVisual->SetWorldScale3D(FVector(MeshScale, MeshScale, 0.01f));
+        AreaVisual->SetWorldScale3D(FVector(MeshScale, MeshScale, 1.f));
         AreaVisual->SetRelativeLocation(FVector(0.f, 0.f, 3.f));
     }
 

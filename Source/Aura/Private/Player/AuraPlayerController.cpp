@@ -39,13 +39,13 @@ AAuraPlayerController::AAuraPlayerController()
 void AAuraPlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
-	if (bMagicDrawingMode)
+	if (bMagicDrawingMode || bMagicTargetingMode)
 	{
 		return;
 	}
 
 	CursorTrace();
-	AutoRun();
+	
 }
 
 void AAuraPlayerController::StartMagicDrawingMode()
@@ -87,14 +87,13 @@ void AAuraPlayerController::StartMagicDrawingMode()
 	}
 
 	MagicDrawingWidget->SetVisibility(ESlateVisibility::Visible);
-
 	bMagicDrawingMode = true;
-
 	bShowMouseCursor = true;
 
-	FInputModeUIOnly InputModeData;
+	FInputModeGameAndUI InputModeData;
 
-	//InputModeData.SetWidgetToFocus(MagicDrawingWidget->TakeWidget());
+	InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputModeData.SetHideCursorDuringCapture(false);
 
 	SetInputMode(InputModeData);
 }
@@ -365,23 +364,6 @@ void AAuraPlayerController::ShowDamageNumber_Implementation(float DamageAmount, 
 	}
 }
 
-void AAuraPlayerController::AutoRun()
-{
-	if (!bAutoRunning) return;
-	if (APawn* ControlledPawn = GetPawn())
-	{
-		const FVector LocationOnSpline = Spline->FindLocationClosestToWorldLocation(ControlledPawn->GetActorLocation(), ESplineCoordinateSpace::World);
-		const FVector Direction = Spline->FindDirectionClosestToWorldLocation(LocationOnSpline, ESplineCoordinateSpace::World);
-		ControlledPawn->AddMovementInput(Direction);
-		
-		const float DistanceToDestination = (LocationOnSpline - CachedDestination).Length();
-		if (DistanceToDestination <= AutoRunAcceptanceRadius)
-		{
-			bAutoRunning = false;
-		}
-	}
-}
-
 void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName PatternId, EMagicElement Element, FVector TargetLocation)
 {
 	 AAuraCharacter* AuraCharacter = Cast<AAuraCharacter>(GetPawn());
@@ -460,7 +442,8 @@ void AAuraPlayerController::ClientMagicTargetAccepted_Implementation()
 		MagicTargetingActor->Destroy();
 		MagicTargetingActor = nullptr;
 	}
-
+	
+	
 	bMagicTargetingMode = false;
 	bWaitingForMagicCastResponse = false;
 
@@ -548,7 +531,7 @@ void AAuraPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
 	if (InputTag.MatchesTagExact(FAuraGameplayTags::Get().InputTag_RMB))
 	{
 		bTargeting = ThisActor ? true : false;
-		bAutoRunning = false;
+		
 	}
 }
 
@@ -657,10 +640,7 @@ void AAuraPlayerController::SetupInputComponent()
 void AAuraPlayerController::Move(const FInputActionValue& InputActionValue)
 {
 	
-	if (bMagicDrawingMode)
-	{
-		return;
-	}
+	
 
 	const FVector2D InputAxisVector =InputActionValue.Get<FVector2D>();
 	const FRotator Rotation = GetControlRotation();

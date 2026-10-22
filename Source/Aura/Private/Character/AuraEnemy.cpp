@@ -20,9 +20,6 @@
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AIPerceptionTypes.h"
 
-
-
-
 AAuraEnemy::AAuraEnemy()
 {
 	PrimaryActorTick.bCanEverTick = true;

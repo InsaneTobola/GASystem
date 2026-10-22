@@ -8,8 +8,10 @@
 #include "Engine/World.h"
 #include "Engine/EngineTypes.h"
 #include "CollisionQueryParams.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/Character.h"
 #include "UObject/ConstructorHelpers.h"
 
 AAuraMagicTargetingActor::AAuraMagicTargetingActor()
@@ -87,7 +89,7 @@ void AAuraMagicTargetingActor::Tick(float DeltaTime)
 
     FHitResult Hit;
 
-    bHasTarget =OwningPlayerController->GetHitResultUnderCursorByChannel(static_cast<ETraceTypeQuery>(ECC_WorldStatic),false,Hit);
+    bHasTarget =OwningPlayerController->GetHitResultUnderCursorByChannel(UEngineTypes::ConvertToTraceType(ECC_WorldStatic),false,Hit);
 
     if (!bHasTarget)
     {
@@ -105,7 +107,7 @@ void AAuraMagicTargetingActor::Tick(float DeltaTime)
     const float Diameter = AreaRadiusCm * 2.f;
     const float MeshScale = Diameter / 100.f;
 
-    AreaMesh->SetWorldScale3D(FVector(MeshScale, MeshScale, 0.01f));
+    AreaMesh->SetWorldScale3D(FVector(MeshScale, MeshScale, 1.f));
 
     const float Distance2D = FVector::Dist2D(Caster->GetActorLocation(),CurrentTargetLocation);
 
@@ -142,47 +144,63 @@ void AAuraMagicTargetingActor::UpdateMaterials()
 
 void AAuraMagicTargetingActor::UpdateRangeRing()
 {
-    if (!IsValid(Caster))
+    if (!IsValid(Caster) || !IsValid(RangeMesh))
     {
-        RangeMesh->SetVisibility(false);
+        if (IsValid(RangeMesh))
+        {
+            RangeMesh->SetVisibility(false);
+        }
+
         return;
     }
 
-    RangeMesh->SetVisibility(true);
+    const FVector CasterLocation = Caster->GetActorLocation();
+    float CapsuleHalfHeight = 0.f;
 
-    FVector GroundLocation = Caster->GetActorLocation() - FVector(0.f, 0.f, 85.f);
+    if (const ACharacter* CasterCharacter = Cast<ACharacter>(Caster))
+    {
+        if (const UCapsuleComponent* Capsule = CasterCharacter->GetCapsuleComponent())
+        {
+            CapsuleHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+        }
+    }
+
+    FVector GroundLocation = CasterLocation - FVector(0.f, 0.f, CapsuleHalfHeight);
 
     if (UWorld* World = GetWorld())
     {
         FHitResult GroundHit;
+
         FCollisionQueryParams Params(SCENE_QUERY_STAT(MagicRangeGroundTrace),true);
 
         Params.AddIgnoredActor(Caster);
         Params.AddIgnoredActor(this);
 
-        const FVector TraceStart = Caster->GetActorLocation() + FVector(0.f, 0.f, 100.f);
+        const FVector TraceStart = GroundLocation + FVector(0.f, 0.f, 50.f);
+        const FVector TraceEnd = GroundLocation - FVector(0.f, 0.f, 100.f);
 
-        const FVector TraceEnd = Caster->GetActorLocation() - FVector(0.f, 0.f, 2000.f);
-
-        if (World->LineTraceSingleByChannel(GroundHit,TraceStart,TraceEnd,ECC_WorldStatic,Params))
+        if (World->LineTraceSingleByChannel(
+            GroundHit,
+            TraceStart,
+            TraceEnd,
+            ECC_WorldStatic,
+            Params))
         {
             GroundLocation = GroundHit.Location;
         }
     }
 
-    RangeMesh->SetWorldLocation(
-        GroundLocation + FVector(0.f, 0.f, 2.f)
-    );
+    // Środek pierścienia zawsze odpowiada pozycji gracza w osi X/Y.
+    RangeMesh->SetWorldLocation(FVector(CasterLocation.X,CasterLocation.Y,GroundLocation.Z + 2.f));
+    RangeMesh->SetWorldRotation(FRotator::ZeroRotator);
+    
+    const float MeshScale = MaxRangeCm / 50.f;
 
-    const float Diameter = MaxRangeCm * 2.f;
-    const float MeshScale = Diameter / 100.f;
-
-    RangeMesh->SetWorldScale3D(FVector(MeshScale, MeshScale, 0.01f)
-    );
+    RangeMesh->SetWorldScale3D(FVector(MeshScale, MeshScale, 1.f));
+    RangeMesh->SetVisibility(true);
 
     if (DynamicRangeMaterial)
     {
         DynamicRangeMaterial->SetVectorParameterValue(FName("Tint"),FLinearColor(1.f, 1.f, 1.f, 1.f));
-        DynamicRangeMaterial->SetScalarParameterValue(FName("Opacity"),0.18f);
     }
 }
