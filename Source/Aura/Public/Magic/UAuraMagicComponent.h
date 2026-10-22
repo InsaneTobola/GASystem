@@ -8,6 +8,7 @@
 #include "UAuraMagicComponent.generated.h"
 
 class UMagicPatternDefinition;
+class UAbilitySystemComponent;
 
 UCLASS(ClassGroup=(Magic), meta=(BlueprintSpawnableComponent))
 class AURA_API UAuraMagicComponent : public UActorComponent
@@ -48,6 +49,17 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Magic|Recognition")
 	TArray<TObjectPtr<UMagicPatternDefinition>> PatternDefinitions;
+
+	// New
+	UMagicPatternDefinition* FindPatternDefinition(FName PatternId) const;
+	void GrantPatternAbilities(UAbilitySystemComponent* ASC);
+	bool BeginTargeting(UMagicPatternDefinition* Pattern);
+	UMagicPatternDefinition* GetSelectedPattern() const;
+	bool IsTargeting() const;
+	void SetPendingCast(FName PatternId, const FVector& TargetLocation);
+	bool ConsumePendingCast(FName& OutPatternId,FVector& OutTargetLocation);
+	void ClearPendingCast();
+	
 private:
 	
 	void ResetStroke();
@@ -70,12 +82,17 @@ private:
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category = "Magic",meta = (AllowPrivateAccess = "true"))
 	FMagicValidationResult LastValidationResult;
 	
-	
+	UPROPERTY(Transient)
+	TObjectPtr<UMagicPatternDefinition> SelectedPattern = nullptr;
 	
 	bool bIsStrokeActive = false;
 
 	bool bSafetyLimitExceeded = false;
-	
-	
+
+	FName PendingPatternId = NAME_None;
+
+	FVector PendingTargetLocation = FVector::ZeroVector;
+
+	bool bHasPendingCast = false;
 	
 };

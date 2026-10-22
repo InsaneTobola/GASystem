@@ -10,9 +10,12 @@
 #include "Data/LevelUpInfo.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+
 #include "Player/AuraPlayerController.h"
 #include "Player/AuraPlayerState.h"
+
 #include "UI/HUD/AuraHUD.h"
+
 #include "Magic/UAuraMagicComponent.h"
 
 AAuraCharacter::AAuraCharacter()
@@ -47,10 +50,14 @@ AAuraCharacter::AAuraCharacter()
 void AAuraCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-	
-	// Init ability actor info for the Server
+
 	InitAbilityActorInfo();
 	AddCharacterAbilities();
+
+	if (IsValid(MagicComponent))
+	{
+		MagicComponent->GrantPatternAbilities(GetAbilitySystemComponent());
+	}
 }
 
 void AAuraCharacter::OnRep_PlayerState()
@@ -172,6 +179,9 @@ void AAuraCharacter::InitAbilityActorInfo()
 	Cast<UAuraAbilitySystemComponent>(AuraPlayerState->GetAbilitySystemComponent())->AbilityActorInfoSet();
 	AbilitySystemComponent = AuraPlayerState->GetAbilitySystemComponent();
 	AttributeSet = AuraPlayerState->GetAttributeSet();
+	
+	BindMovementStatusTags();
+	RefreshMovementSpeed();
 	
 	if (AAuraPlayerController* AuraPlayerController = Cast<AAuraPlayerController>(GetController()))
 	{

@@ -4,6 +4,8 @@
 #include "Magic/MagicPointCloudRecognizer.h"
 #include "Magic/MagicPatternDefinition.h"
 #include "HAL/PlatformTime.h"
+#include "AbilitySystemComponent.h"
+#include "GameplayAbilitySpec.h"
 
 UAuraMagicComponent::UAuraMagicComponent()
 {
@@ -237,6 +239,114 @@ FMagicRecognitionResult UAuraMagicComponent::RecognizeCurrentGesture() const
 
 	return BestResult;
 }
+
+UMagicPatternDefinition* UAuraMagicComponent::FindPatternDefinition(FName PatternId) const
+{
+	if (PatternId.IsNone())
+	{
+		return nullptr;
+	}
+
+	for (UMagicPatternDefinition* Pattern : PatternDefinitions)
+	{
+		if (IsValid(Pattern) && Pattern->PatternId == PatternId)
+		{
+			return Pattern;
+		}
+	}
+
+	return nullptr;
+}
+
+void UAuraMagicComponent::GrantPatternAbilities(UAbilitySystemComponent* ASC)
+{
+	if (!IsValid(ASC))
+	{
+		return;
+	}
+
+	AActor* Owner = GetOwner();
+
+	if (!IsValid(Owner) || !Owner->HasAuthority())
+	{
+		return;
+	}
+
+	for (const UMagicPatternDefinition* Pattern : PatternDefinitions)
+	{
+		if (!IsValid(Pattern) || !Pattern->SkillAbilityClass)
+		{
+			continue;
+		}
+
+		if (ASC->FindAbilitySpecFromClass(Pattern->SkillAbilityClass))
+		{
+			continue;
+		}
+
+		FGameplayAbilitySpec AbilitySpec(
+			Pattern->SkillAbilityClass,
+			1
+		);
+
+		ASC->GiveAbility(AbilitySpec);
+	}
+}
+
+bool UAuraMagicComponent::BeginTargeting(UMagicPatternDefinition* Pattern)
+{
+	if (!IsValid(Pattern) || Pattern->Element != SelectedElement || !Pattern->SkillAbilityClass)
+	{
+		return false;
+	}
+
+	SelectedPattern = Pattern;
+
+	bIsStrokeActive = false;
+	MagicState = EMagicState::Targeting;
+
+	return true;
+}
+
+UMagicPatternDefinition* UAuraMagicComponent::GetSelectedPattern() const
+{
+	return SelectedPattern;
+}
+
+bool UAuraMagicComponent::IsTargeting() const
+{
+	return MagicState == EMagicState::Targeting;
+}
+
+void UAuraMagicComponent::SetPendingCast(FName PatternId, const FVector& TargetLocation)
+{
+	PendingPatternId = PatternId;
+	PendingTargetLocation = TargetLocation;
+	bHasPendingCast = true;
+}
+
+bool UAuraMagicComponent::ConsumePendingCast(FName& OutPatternId, FVector& OutTargetLocation)
+{
+	if (!bHasPendingCast || PendingPatternId.IsNone())
+	{
+		return false;
+	}
+
+	OutPatternId = PendingPatternId;
+	OutTargetLocation = PendingTargetLocation;
+
+	ClearPendingCast();
+
+	return true;
+}
+
+void UAuraMagicComponent::ClearPendingCast()
+{
+	PendingPatternId = NAME_None;
+	PendingTargetLocation = FVector::ZeroVector;
+	bHasPendingCast = false;
+}
+
 bool UAuraMagicComponent::AddStrokePoint(const FVector2D& NormalizedPoint)
 {
 	if (!IsDrawing() || !bIsStrokeActive)
@@ -320,7 +430,10 @@ void UAuraMagicComponent::CancelMagic()
 
 	bIsStrokeActive = false;
 	bSafetyLimitExceeded = false;
-
+	
+	SelectedPattern = nullptr;
+	ClearPendingCast();
+	
 	MagicState = EMagicState::Inactive;
 }
 

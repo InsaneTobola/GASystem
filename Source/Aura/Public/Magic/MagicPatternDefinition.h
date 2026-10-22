@@ -8,6 +8,7 @@
 
 #include "MagicPatternDefinition.generated.h"
 
+class UGameplayAbility;
 
 USTRUCT(BlueprintType)
 struct AURA_API FMagicPatternTemplate
@@ -52,6 +53,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recognition",meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float MinimumSimilarityScore = 0.30f;
 
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Skill")
+    TSubclassOf<UGameplayAbility> SkillAbilityClass;
+    
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Validation")
     FMagicPatternValidationRules ValidationRules;
     

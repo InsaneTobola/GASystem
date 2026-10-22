@@ -13,5 +13,10 @@ float UMMC_Speed::CalculateBaseMagnitude_Implementation(const FGameplayEffectSpe
 {
 	const float Air = GetCapturedValue(AirDef, Spec);
 
-	return  Air/5.f;
+	const float ClampedAir = FMath::Clamp(Air, 0.f, 40.f);
+
+	constexpr float BaseSpeed = 200.f;
+	constexpr float SpeedPerAirPoint = 5.f;
+
+	return BaseSpeed + ClampedAir * SpeedPerAirPoint;
 }

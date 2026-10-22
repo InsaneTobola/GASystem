@@ -5,10 +5,11 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "GameplayTagContainer.h"
+#include "Magic/MagicTypes.h"
 #include "AuraPlayerController.generated.h"
 
 
-class UAuraMagicDrawingWidget;
+
 class UInputMappingContext;
 class UInputAction;
 class UDamageTextComponent;
@@ -16,8 +17,12 @@ class IEnemyInterface;
 class UAuraInputConfig;
 class UAuraAbilitySystemComponent;
 class USplineComponent;
+
+class UAuraMagicDrawingWidget;
 class UAuraMagicComponent;
 class SUAuraMagicDrawingWidget;
+class AAuraMagicTargetingActor;
+class UMagicPatternDefinition;
 
 struct FInputActionValue;
 /**
@@ -40,6 +45,10 @@ public:
 	void StartMagicDrawingMode();
 	void StopMagicDrawingMode();
 	void ConfirmMagicDrawingMode();
+	
+	void StartMagicTargeting(UMagicPatternDefinition* Pattern);
+	void CancelMagicTargeting();
+	void ConfirmMagicTargeting();
 	
 protected:
 	virtual void BeginPlay() override;
@@ -99,6 +108,27 @@ private:
 	bool bMagicDrawingMode = false;
 
 	
+	UPROPERTY(EditDefaultsOnly, Category = "Magic|Targeting")
+	TSubclassOf<AAuraMagicTargetingActor> MagicTargetingActorClass;
 
+	UPROPERTY()
+	TObjectPtr<AAuraMagicTargetingActor> MagicTargetingActor;
+
+	FName PendingMagicPatternId = NAME_None;
+
+	EMagicElement PendingMagicElement = EMagicElement::Fire;
+
+	bool bMagicTargetingMode = false;
+
+	bool bWaitingForMagicCastResponse = false;
+
+	UFUNCTION(Server, Reliable)
+	void ServerConfirmMagicTarget(FName PatternId,EMagicElement Element,FVector TargetLocation);
+
+	UFUNCTION(Client, Reliable)
+	void ClientMagicTargetAccepted();
+
+	UFUNCTION(Client, Reliable)
+	void ClientMagicTargetRejected();
 	
 };

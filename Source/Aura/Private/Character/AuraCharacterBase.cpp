@@ -4,8 +4,11 @@
 #include "Character/AuraCharacterBase.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystem/AuraAbilitySystemComponent.h"
+#include "AbilitySystem/AuraAttributeSet.h"
+#include "AuraGameplayTags.h"
 #include "Aura/Aura.h"
 #include "Components/CapsuleComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 AAuraCharacterBase::AAuraCharacterBase()
 {
@@ -61,7 +64,78 @@ void AAuraCharacterBase::MulticastHandleDeath_Implementation()
 void AAuraCharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	BaseMovementSpeed = GetCharacterMovement()->MaxWalkSpeed;
+}
+
+void AAuraCharacterBase::BindMovementStatusTags()
+{
+	 if (!IsValid(AbilitySystemComponent) ||
+        bMovementStatusCallbacksBound)
+    {
+        return;
+    }
+
+    const FAuraGameplayTags& MagicTags = FAuraGameplayTags::Get();
+
+    AbilitySystemComponent->RegisterGameplayTagEvent(
+        MagicTags.Status_Stun,
+        EGameplayTagEventType::NewOrRemoved
+    ).AddUObject(
+        this,
+        &AAuraCharacterBase::HandleMovementStatusTagChanged
+    );
+
+    AbilitySystemComponent->RegisterGameplayTagEvent(MagicTags.Status_Slow,EGameplayTagEventType::NewOrRemoved).AddUObject(this,&AAuraCharacterBase::HandleMovementStatusTagChanged);
+    AbilitySystemComponent->RegisterGameplayTagEvent(MagicTags.HitReact,EGameplayTagEventType::NewOrRemoved).AddUObject(this,&AAuraCharacterBase::HandleMovementStatusTagChanged);
+
+    bMovementStatusCallbacksBound = true;
+}
+
+void AAuraCharacterBase::HandleMovementStatusTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
+{
+    RefreshMovementSpeed();
+}
+
+void AAuraCharacterBase::RefreshMovementSpeed()
+{
+    if (!GetCharacterMovement())
+    {
+        return;
+    }
+
+    const UAuraAttributeSet* AuraAS = Cast<UAuraAttributeSet>(AttributeSet);
+
+    float DesiredSpeed = BaseMovementSpeed;
+
+    if (AuraAS && AuraAS->GetSpeed() > 0.f)
+    {
+        DesiredSpeed = AuraAS->GetSpeed();
+    }
+
+    if (IsValid(AbilitySystemComponent))
+    {
+        const FAuraGameplayTags& MagicTags = FAuraGameplayTags::Get();
+
+        if (AbilitySystemComponent->HasMatchingGameplayTag(MagicTags.Status_Slow))
+        {
+            float SlowPercent = AuraAS? AuraAS->GetSlow(): 50.f;
+
+            if (SlowPercent <= 0.f)
+            {
+                SlowPercent = 50.f;
+            }
+
+            SlowPercent = FMath::Clamp(SlowPercent, 0.f, 90.f);
+            DesiredSpeed *= 1.f - SlowPercent / 100.f;
+        }
+
+        if (AbilitySystemComponent->HasMatchingGameplayTag(MagicTags.Status_Stun) || AbilitySystemComponent->HasMatchingGameplayTag(MagicTags.HitReact))
+        {
+            DesiredSpeed = 0.f;
+        }
+    }
+
+    GetCharacterMovement()->MaxWalkSpeed = FMath::Max(DesiredSpeed, 0.f);
 }
 
 FVector AAuraCharacterBase::GetCombatSocketLocation()
@@ -131,6 +205,9 @@ void AAuraCharacterBase::Dissolve()
 		StartWeaponDissolveTimeline(DynamicMatInst);
 	}
 }
+
+
+
 
 
 

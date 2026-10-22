@@ -4,6 +4,7 @@
 #include "AbilitySystem/AuraAttributeSet.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
+#include "Character/AuraCharacterBase.h"
 #include "GameFramework/Character.h"
 #include "GameplayEffectExtension.h"
 #include "Net/UnrealNetwork.h"
@@ -252,6 +253,23 @@ void UAuraAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute,
 	{
 		SetMana(GetMaxMana());
 		bTopOffMana = false;
+	}
+	
+	if (Attribute != GetSpeedAttribute() && Attribute != GetSlowAttribute() && Attribute != GetStunAttribute())
+	{
+		return;
+	}
+	UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+
+	if (!IsValid(ASC))
+	{
+		return;
+	}
+
+	if (AAuraCharacterBase* Character =
+		Cast<AAuraCharacterBase>(ASC->GetAvatarActor()))
+	{
+		Character->RefreshMovementSpeed();
 	}
 }
 

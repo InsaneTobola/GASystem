@@ -521,12 +521,14 @@ void AAuraEnemy::BeginPlay()
 void AAuraEnemy::HitReactTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
 {
 	bHitReacting = NewCount > 0;
-	GetCharacterMovement()->MaxWalkSpeed = bHitReacting ? 0.f : BaseWalkSpeed;
+	RefreshMovementSpeed();
 }
 void AAuraEnemy::InitAbilityActorInfo()
 {
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	CastChecked<UAuraAbilitySystemComponent>(AbilitySystemComponent)->AbilityActorInfoSet();
+	BindMovementStatusTags();
+	RefreshMovementSpeed();
 }
 void AAuraEnemy::InitializeDefaultAttributes() const
 {

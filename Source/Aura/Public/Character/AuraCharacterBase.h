@@ -9,6 +9,7 @@
 #include "AuraCharacterBase.generated.h"
 
 
+struct FGameplayTag;
 class UAbilitySystemComponent;
 class UAttributeSet;
 class UGameplayEffect;
@@ -28,6 +29,8 @@ public:
 	
 	UFUNCTION(NetMulticast, Reliable)
 	virtual void MulticastHandleDeath();
+	
+	void RefreshMovementSpeed();
 	
 	/** Combat Interface */
 	virtual UAnimMontage* GetHitReactMontage_Implementation() override;
@@ -86,6 +89,11 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character Class Default")
 	ECharacterClass CharacterClass = ECharacterClass::Warrior;
+	
+	void BindMovementStatusTags();
+	void HandleMovementStatusTagChanged(const FGameplayTag CallbackTag,int32 NewCount);
+	float BaseMovementSpeed = 600.f;
+	bool bMovementStatusCallbacksBound = false;
 private:
 	
 	UPROPERTY(EditAnywhere, Category = "Abilities")
@@ -96,4 +104,6 @@ private:
 	
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	TObjectPtr<UAnimMontage> HitReactMontage;
+	
+
 };

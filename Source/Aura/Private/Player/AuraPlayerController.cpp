@@ -3,13 +3,18 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystem/AuraAbilitySystemComponent.h"
+#include "AbilitySystem/Abilities/AuraAreaSpell.h"
+#include "AbilitySystem/AuraAttributeSet.h"
 #include "AuraGameplayTags.h"
 
 #include "Character/AuraCharacter.h"
 #include "Components/SplineComponent.h"
+#include "CollisionQueryParams.h"
 
 #include "EnhancedInputSubsystems.h"
 #include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "Engine/EngineTypes.h"
 
 #include "GameFramework/Character.h"
 
@@ -18,6 +23,8 @@
 
 #include "Magic/UAuraMagicComponent.h"
 #include "Magic/MagicPointCloudRecognizer.h"
+#include "Magic/MagicPatternDefinition.h"
+#include "Magic/MagicTargetingActor.h"
 
 #include "UI/Widget/DamageTextComponent.h"
 #include "UI/Widget/SUAuraMagicDrawingWidget.h"
@@ -124,88 +131,164 @@ void AAuraPlayerController::StopMagicDrawingMode()
 void AAuraPlayerController::ConfirmMagicDrawingMode()
 {
 	UAuraMagicComponent* MagicComponent = GetMagicComponent();
-	if (!MagicComponent)
-	{
-		return;
-	}
-	const FMagicGesture& Gesture =
-		MagicComponent->GetCurrentGesture();
 
-	UE_LOG(
-		LogTemp,
-		Warning,
-		TEXT(
-			"MAGIC DEBUG BEFORE VALIDATION | Strokes=%d | TotalPoints=%d"
-		),
-		Gesture.GetStrokeCount(),
-		Gesture.GetTotalPointCount()
-	);
-
-	for (int32 Index = 0; Index < Gesture.Strokes.Num(); ++Index)
+	if (!IsValid(MagicComponent))
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT(
-				"MAGIC DEBUG STROKE | Index=%d | Points=%d"
-			),
-			Index,
-			Gesture.Strokes[Index].Points.Num()
-		);
-	}
-	const FMagicValidationResult Result = MagicComponent->ConfirmGesture();
-	if (!Result.bIsValid)
-	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("Magic Gesture rejected. Reason: %d"),
-			static_cast<int32>(Result.FailureReason)
-		);
 		StopMagicDrawingMode();
-		
 		return;
 	}
 
-	UE_LOG(
-		LogTemp,
-		Log,
-		TEXT(
-			"Magic Gesture accepted. Strokes: %d | Points: %d | Path: %.3f | Aspect: %.3f"
-		),
-		Result.StrokeCount,
-		Result.TotalPointCount,
-		Result.TotalPathLength,
-		Result.AspectRatio
-	);
-	
+	const FMagicValidationResult Validation = MagicComponent->ConfirmGesture();
+
+	if (!Validation.bIsValid)
+	{
+		StopMagicDrawingMode();
+		MagicComponent->CancelMagic();
+		return;
+	}
+
 	const FMagicRecognitionResult Recognition = MagicComponent->RecognizeCurrentGesture();
-	
-	if (Recognition.bMatchFound)
+
+	if (!Recognition.bMatchFound)
+	{
+		StopMagicDrawingMode();
+		MagicComponent->CancelMagic();
+		return;
+	}
+
+	UMagicPatternDefinition* Pattern = MagicComponent->FindPatternDefinition(Recognition.PatternId);
+
+	if (!IsValid(Pattern) || Pattern->Element != MagicComponent->GetSelectedElement() || !Pattern->SkillAbilityClass)
+	{
+		StopMagicDrawingMode();
+		MagicComponent->CancelMagic();
+		return;
+	}
+
+	const UAuraAreaSpell* SpellDefaults = Cast<UAuraAreaSpell>(Pattern->SkillAbilityClass.GetDefaultObject());
+
+	if (!SpellDefaults)
 	{
 		UE_LOG(
 			LogTemp,
-			Warning,
-			TEXT(
-				"MAGIC RECOGNIZED | Pattern=%s | Template=%s | Similarity=%.3f | Distance=%.3f"
-			),
-			*Recognition.PatternId.ToString(),
-			*Recognition.TemplateId.ToString(),
-			Recognition.SimilarityScore,
-			Recognition.CloudDistance
+			Error,
+			TEXT("Magic pattern is not assigned to a UAuraAreaSpell.")
 		);
+
+		StopMagicDrawingMode();
+		MagicComponent->CancelMagic();
+		return;
 	}
-	else
-	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT(
-				"MAGIC NOT RECOGNIZED | No template passed similarity threshold."
-			)
-		);
-	}
+
 	StopMagicDrawingMode();
+
+	if (!MagicComponent->BeginTargeting(Pattern))
+	{
+		MagicComponent->CancelMagic();
+		return;
+	}
+
+	StartMagicTargeting(Pattern);
+}
+
+void AAuraPlayerController::StartMagicTargeting(UMagicPatternDefinition* Pattern)
+{
+	UAuraMagicComponent* MagicComponent = GetMagicComponent();
+	UAbilitySystemComponent* ASC = GetASC();
+
+	if (!IsValid(Pattern) || !IsValid(MagicComponent) || !IsValid(ASC) || !MagicTargetingActorClass)
+	{
+		CancelMagicTargeting();
+		return;
+	}
+
+	const UAuraAreaSpell* SpellDefaults = Cast<UAuraAreaSpell>(Pattern->SkillAbilityClass.GetDefaultObject());
+
+	if (!SpellDefaults)
+	{
+		CancelMagicTargeting();
+		return;
+	}
+
+	if (IsValid(MagicTargetingActor))
+	{
+		MagicTargetingActor->Destroy();
+		MagicTargetingActor = nullptr;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	MagicTargetingActor = GetWorld()->SpawnActor<AAuraMagicTargetingActor>(MagicTargetingActorClass,FVector::ZeroVector,FRotator::ZeroRotator,SpawnParams);
+
+	if (!IsValid(MagicTargetingActor))
+	{
+		CancelMagicTargeting();
+		return;
+	}
+
+	MagicTargetingActor->InitializeTargeting(this,GetPawn(),SpellDefaults->GetMaxRangeCm(),SpellDefaults->CalculateAreaRadius(ASC));
+
+	PendingMagicPatternId = Pattern->PatternId;
+	PendingMagicElement = Pattern->Element;
+
+	bMagicTargetingMode = true;
+	bWaitingForMagicCastResponse = false;
+
+	bShowMouseCursor = true;
+
+	FInputModeGameAndUI InputModeData;
+	InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputModeData.SetHideCursorDuringCapture(false);
+
+	SetInputMode(InputModeData);
+}
+
+void AAuraPlayerController::CancelMagicTargeting()
+{
+	if (IsValid(MagicTargetingActor))
+	{
+		MagicTargetingActor->Destroy();
+		MagicTargetingActor = nullptr;
+	}
+
+	bMagicTargetingMode = false;
+	bWaitingForMagicCastResponse = false;
+
+	PendingMagicPatternId = NAME_None;
+
+	if (UAuraMagicComponent* MagicComponent = GetMagicComponent())
+	{
+		if (MagicComponent->IsTargeting())
+		{
+			MagicComponent->CancelMagic();
+		}
+	}
+
+	bShowMouseCursor = true;
+
+	FInputModeGameAndUI InputModeData;
+	InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputModeData.SetHideCursorDuringCapture(false);
+
+	SetInputMode(InputModeData);
+}
+
+void AAuraPlayerController::ConfirmMagicTargeting()
+{
+	if (!bMagicTargetingMode || bWaitingForMagicCastResponse || !IsValid(MagicTargetingActor))
+	{
+		return;
+	}
+
+	if (!MagicTargetingActor->HasValidTarget())
+	{
+		return;
+	}
+	bWaitingForMagicCastResponse = true;
+
+	ServerConfirmMagicTarget(PendingMagicPatternId,PendingMagicElement,MagicTargetingActor->GetTargetLocation());
 }
 
 UAuraMagicComponent* AAuraPlayerController::GetMagicComponent() const
@@ -222,6 +305,16 @@ UAuraMagicComponent* AAuraPlayerController::GetMagicComponent() const
 
 void AAuraPlayerController::MagicInputPressed(FGameplayTag InputTag)
 {
+	if (bWaitingForMagicCastResponse)
+	{
+		return;
+	}
+
+	if (bMagicTargetingMode)
+	{
+		CancelMagicTargeting();
+	}
+	
 	UAuraMagicComponent* MagicComponent = GetMagicComponent();
 
 	if (!MagicComponent)
@@ -289,6 +382,107 @@ void AAuraPlayerController::AutoRun()
 	}
 }
 
+void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName PatternId, EMagicElement Element, FVector TargetLocation)
+{
+	 AAuraCharacter* AuraCharacter = Cast<AAuraCharacter>(GetPawn());
+
+    if (!IsValid(AuraCharacter) || !IsValid(AuraCharacter->MagicComponent))
+    {
+        ClientMagicTargetRejected();
+        return;
+    }
+
+    UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(AuraCharacter);
+
+    if (!IsValid(ASC))
+    {
+        ClientMagicTargetRejected();
+        return;
+    }
+
+    UMagicPatternDefinition* Pattern = AuraCharacter->MagicComponent->FindPatternDefinition(PatternId);
+
+    if (!IsValid(Pattern) || Pattern->Element != Element || !Pattern->SkillAbilityClass)
+    {
+        ClientMagicTargetRejected();
+        return;
+    }
+
+    const UAuraAreaSpell* SpellDefaults = Cast<UAuraAreaSpell>(Pattern->SkillAbilityClass.GetDefaultObject());
+
+    if (!SpellDefaults || !ASC->FindAbilitySpecFromClass(Pattern->SkillAbilityClass))
+    {
+        ClientMagicTargetRejected();
+        return;
+    }
+
+    FHitResult GroundHit;
+    FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(MagicTargetValidation),true);
+    QueryParams.AddIgnoredActor(AuraCharacter);
+
+    const FVector TraceStart = TargetLocation + FVector(0.f, 0.f, 5000.f);
+    const FVector TraceEnd = TargetLocation - FVector(0.f, 0.f, 5000.f);
+
+    if (!GetWorld()->LineTraceSingleByChannel(GroundHit,TraceStart,TraceEnd,ECC_WorldStatic,QueryParams))
+    {
+        ClientMagicTargetRejected();
+        return;
+    }
+
+    const FVector ValidatedLocation = GroundHit.Location;
+    const float Distance2D = FVector::Dist2D(AuraCharacter->GetActorLocation(),ValidatedLocation);
+
+    if (Distance2D > SpellDefaults->GetMaxRangeCm())
+    {
+        ClientMagicTargetRejected();
+        return;
+    }
+
+    AuraCharacter->MagicComponent->SetPendingCast(
+        PatternId,
+        ValidatedLocation
+    );
+
+    if (!ASC->TryActivateAbilityByClass(Pattern->SkillAbilityClass))
+    {
+        AuraCharacter->MagicComponent->ClearPendingCast();
+        ClientMagicTargetRejected();
+        return;
+    }
+
+    ClientMagicTargetAccepted();
+}
+
+void AAuraPlayerController::ClientMagicTargetAccepted_Implementation()
+{
+	if (IsValid(MagicTargetingActor))
+	{
+		MagicTargetingActor->Destroy();
+		MagicTargetingActor = nullptr;
+	}
+
+	bMagicTargetingMode = false;
+	bWaitingForMagicCastResponse = false;
+
+	PendingMagicPatternId = NAME_None;
+
+	if (UAuraMagicComponent* MagicComponent = GetMagicComponent())
+	{
+		MagicComponent->CancelMagic();
+	}
+}
+
+void AAuraPlayerController::ClientMagicTargetRejected_Implementation()
+{
+	bWaitingForMagicCastResponse = false;
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("Magic target was rejected by the server.")
+	);
+}
+
 
 void AAuraPlayerController::CursorTrace()
 {
@@ -307,18 +501,46 @@ void AAuraPlayerController::CursorTrace()
 
 void AAuraPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
 {
-	const FAuraGameplayTags& GameplayTags = FAuraGameplayTags::Get();
+	if (bMagicTargetingMode)
+	{
+		if (bWaitingForMagicCastResponse)
+		{
+			return;
+		}
 
-	if (InputTag.MatchesTagExact(GameplayTags.InputTag_1) ||
-		InputTag.MatchesTagExact(GameplayTags.InputTag_2) ||
-		InputTag.MatchesTagExact(GameplayTags.InputTag_3) ||
-		InputTag.MatchesTagExact(GameplayTags.InputTag_4))
+		const FAuraGameplayTags& MagicTags = FAuraGameplayTags::Get();
+
+		if (InputTag.MatchesTagExact(MagicTags.InputTag_LMB))
+		{
+			ConfirmMagicTargeting();
+			return;
+		}
+
+		if (InputTag.MatchesTagExact(MagicTags.InputTag_RMB))
+		{
+			CancelMagicTargeting();
+			return;
+		}
+
+		return;
+	}
+
+	if (bMagicDrawingMode)
+	{
+		return;
+	}
+	const FAuraGameplayTags& MagicGameplayTags = FAuraGameplayTags::Get();
+
+	if (InputTag.MatchesTagExact(MagicGameplayTags.InputTag_1) ||
+		InputTag.MatchesTagExact(MagicGameplayTags.InputTag_2) ||
+		InputTag.MatchesTagExact(MagicGameplayTags.InputTag_3) ||
+		InputTag.MatchesTagExact(MagicGameplayTags.InputTag_4))
 	{
 		HandleMagicInput(InputTag);
 		return;
 	}
 	
-	if (bMagicDrawingMode)
+	if (bMagicDrawingMode || bMagicTargetingMode)
 	{
 		return;
 	}
@@ -332,6 +554,11 @@ void AAuraPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
 
 void AAuraPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
 {
+	if (bMagicDrawingMode || bMagicTargetingMode)
+	{
+		return;
+	}
+	
 	if (!InputTag.MatchesTagExact(FAuraGameplayTags::Get().InputTag_RMB))
 	{
 		if (GetASC())
@@ -348,27 +575,7 @@ void AAuraPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
 			GetASC()->AbilityInputTagReleased(InputTag);
 		}
 	}
-	/*else
-	{
-		const APawn* ControlledPawn = GetPawn();
-		if (FollowTime <= ShortPressThreshold && ControlledPawn)
-		{
-			if (UNavigationPath* NavPath = UNavigationSystemV1::FindPathToLocationSynchronously(this, ControlledPawn->GetActorLocation(), CachedDestination))
 	
-			{
-				if (NavPath->PathPoints.Num() > 0)
-				{
-					Spline->ClearSplinePoints();
-					for (const FVector& PointLoc: NavPath->PathPoints)
-					{
-						Spline->AddSplinePoint(PointLoc, ESplineCoordinateSpace::World);
-						DrawDebugSphere(GetWorld(), PointLoc, 8.f, 8, FColor::Green, false, 5.f);
-					}
-					CachedDestination = NavPath->PathPoints[NavPath->PathPoints.Num() - 1];
-					bAutoRunning = true;
-				}
-			}
-		}*/
 		FollowTime = 0.f;
 		bTargeting = false;
 	
@@ -376,6 +583,11 @@ void AAuraPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
 
 void AAuraPlayerController::AbilityInputTagHeld(FGameplayTag InputTag)
 {
+	if (bMagicDrawingMode || bMagicTargetingMode)
+	{
+		return;
+	}
+	
 	if (GetASC() == nullptr)
 	{
 		return;
@@ -444,6 +656,7 @@ void AAuraPlayerController::SetupInputComponent()
 
 void AAuraPlayerController::Move(const FInputActionValue& InputActionValue)
 {
+	
 	if (bMagicDrawingMode)
 	{
 		return;
