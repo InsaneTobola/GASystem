@@ -329,6 +329,10 @@ FString("StartSearch")
 		FName("Status.Frost"), 
 	FString("Frost")
 		);
+	GameplayTags.Status_Knockback = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Status.Knockback"), 
+	FString("Knockback")
+		);
 	
 }
 

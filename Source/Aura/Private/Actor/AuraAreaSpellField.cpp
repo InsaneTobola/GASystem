@@ -7,11 +7,12 @@
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
-
+#include "AuraGameplayTags.h"
 
 #include "Interaction/EnemyInterface.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Magic/MagicDebug.h"
 
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
@@ -58,6 +59,7 @@ void AAuraAreaSpellField::InitializeField(
     float InAreaRadiusCm,
     float InDurationSeconds,
     TSubclassOf<UGameplayEffect> InDamageEffectClass,
+    TSubclassOf<UGameplayEffect> InKnockbackEffectClass,
     const TMap<FGameplayTag, float>& InDamageValues,
     int32 InAbilityLevel,
     UGameplayAbility* InSourceAbility,
@@ -71,6 +73,7 @@ void AAuraAreaSpellField::InitializeField(
     DurationSeconds = FMath::Max(InDurationSeconds, 0.01f);
 
     DamageEffectClass = InDamageEffectClass;
+    KnockbackEffectClass = InKnockbackEffectClass;
     ScaledDamageValues = InDamageValues;
     AbilityLevel = FMath::Max(InAbilityLevel, 1);
 
@@ -110,6 +113,19 @@ void AAuraAreaSpellField::BeginPlay()
         TArray<AActor*> OverlappingActors;
         AreaSphere->GetOverlappingActors(OverlappingActors);
 
+        AuraMagicDebugPrint(
+    FString::Printf(
+        TEXT("AREA FIELD: Authority=%d Radius=%.1f Duration=%.2f InitialOverlaps=%d DamageEffect=%s"),
+        HasAuthority() ? 1 : 0,
+        AreaRadiusCm,
+        DurationSeconds,
+        OverlappingActors.Num(),
+        *GetNameSafe(DamageEffectClass.Get())
+    ),
+    FColor::Cyan,
+    5.f
+);
+        
         for (AActor* Actor : OverlappingActors)
         {
             ApplyToActor(Actor);
@@ -158,31 +174,72 @@ void AAuraAreaSpellField::UpdateVisuals()
     }
 }
 
-void AAuraAreaSpellField::OnAreaBeginOverlap(
-    UPrimitiveComponent* OverlappedComponent,
-    AActor* OtherActor,
-    UPrimitiveComponent* OtherComp,
-    int32 OtherBodyIndex,
-    bool bFromSweep,
-    const FHitResult& SweepResult)
+void AAuraAreaSpellField::OnAreaBeginOverlap(UPrimitiveComponent* OverlappedComponent,AActor* OtherActor,UPrimitiveComponent* OtherComp,int32 OtherBodyIndex,bool bFromSweep,const FHitResult& SweepResult)
 {
+    AuraMagicDebugPrint(
+    FString::Printf(
+        TEXT("AREA FIELD: Overlap event with %s"),
+        *GetNameSafe(OtherActor)
+    ),
+    FColor::Yellow
+);
+    
     ApplyToActor(OtherActor);
 }
 
 void AAuraAreaSpellField::ApplyToActor(AActor* OtherActor)
 {
-    if (!HasAuthority() ||!IsValid(OtherActor) ||OtherActor == SourceActor)
+    if (!HasAuthority())
     {
         return;
     }
 
-    if (bAffectOnlyEnemies &&!OtherActor->GetClass()->ImplementsInterface(UEnemyInterface::StaticClass()))
+    if (!IsValid(OtherActor) || OtherActor == SourceActor)
     {
         return;
     }
 
-    if (FVector::Dist2D(GetActorLocation(),OtherActor->GetActorLocation()) > AreaRadiusCm)
+    AuraMagicDebugPrint(
+        FString::Printf(
+            TEXT("AREA FIELD: Candidate=%s"),
+            *GetNameSafe(OtherActor)
+        ),
+        FColor::Cyan
+    );
+
+    if (bAffectOnlyEnemies &&
+        !OtherActor->GetClass()->ImplementsInterface(
+            UEnemyInterface::StaticClass()
+        ))
     {
+        AuraMagicDebugPrint(
+            FString::Printf(
+                TEXT("AREA FIELD SKIP: %s does not implement EnemyInterface."),
+                *GetNameSafe(OtherActor)
+            ),
+            FColor::Orange
+        );
+
+        return;
+    }
+
+    const float Distance2D = FVector::Dist2D(
+        GetActorLocation(),
+        OtherActor->GetActorLocation()
+    );
+
+    if (Distance2D > AreaRadiusCm)
+    {
+        AuraMagicDebugPrint(
+            FString::Printf(
+                TEXT("AREA FIELD SKIP: %s outside radius. Distance=%.1f Radius=%.1f"),
+                *GetNameSafe(OtherActor),
+                Distance2D,
+                AreaRadiusCm
+            ),
+            FColor::Orange
+        );
+
         return;
     }
 
@@ -190,77 +247,236 @@ void AAuraAreaSpellField::ApplyToActor(AActor* OtherActor)
 
     if (AffectedActors.Contains(WeakTarget))
     {
+        AuraMagicDebugPrint(
+            FString::Printf(
+                TEXT("AREA FIELD SKIP: %s already affected."),
+                *GetNameSafe(OtherActor)
+            ),
+            FColor::Orange
+        );
+
         return;
     }
 
-    UAbilitySystemComponent* SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(SourceActor);
-    UAbilitySystemComponent* TargetASC =UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor);
+    UAbilitySystemComponent* SourceASC =
+        UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(
+            SourceActor
+        );
 
-    if (!IsValid(SourceASC) || !IsValid(TargetASC) || !DamageEffectClass)
+    UAbilitySystemComponent* TargetASC =
+        UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(
+            OtherActor
+        );
+
+    if (!IsValid(SourceASC) ||
+        !IsValid(TargetASC) ||
+        !DamageEffectClass)
     {
+        AuraMagicDebugPrint(
+            FString::Printf(
+                TEXT("AREA FIELD ERROR: SourceASC=%d TargetASC=%d DamageEffect=%s"),
+                IsValid(SourceASC) ? 1 : 0,
+                IsValid(TargetASC) ? 1 : 0,
+                *GetNameSafe(DamageEffectClass.Get())
+            ),
+            FColor::Red,
+            6.f
+        );
+
         return;
     }
 
-    FGameplayEffectContextHandle ContextHandle = SourceASC->MakeEffectContext();
+    FGameplayEffectContextHandle ContextHandle =
+        SourceASC->MakeEffectContext();
 
     ContextHandle.SetAbility(SourceAbility);
     ContextHandle.AddSourceObject(SourceActor);
 
-    const FGameplayEffectSpecHandle DamageSpecHandle =SourceASC->MakeOutgoingSpec(DamageEffectClass,AbilityLevel,ContextHandle);
+    const FGameplayEffectSpecHandle DamageSpecHandle =
+        SourceASC->MakeOutgoingSpec(
+            DamageEffectClass,
+            AbilityLevel,
+            ContextHandle
+        );
 
-    if (!DamageSpecHandle.IsValid() || !DamageSpecHandle.Data.IsValid())
+    if (!DamageSpecHandle.IsValid() ||
+        !DamageSpecHandle.Data.IsValid())
     {
+        AuraMagicDebugPrint(
+            TEXT("AREA FIELD ERROR: Damage GameplayEffectSpec is invalid."),
+            FColor::Red
+        );
+
         return;
     }
 
     for (const TPair<FGameplayTag, float>& Pair : ScaledDamageValues)
     {
-        UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(DamageSpecHandle,Pair.Key,Pair.Value);
+        UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(
+            DamageSpecHandle,
+            Pair.Key,
+            Pair.Value
+        );
     }
 
-    AffectedActors.Add(WeakTarget);
-
-    TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpecHandle.Data.Get()
+    AuraMagicDebugPrint(
+        FString::Printf(
+            TEXT("AREA FIELD: Applying %s to %s, DamageEntries=%d"),
+            *GetNameSafe(DamageEffectClass.Get()),
+            *GetNameSafe(OtherActor),
+            ScaledDamageValues.Num()
+        ),
+        FColor::Green,
+        5.f
     );
 
-    for (const TSubclassOf<UGameplayEffect>& EffectClass : AdditionalEffectClasses)
+    TargetASC->ApplyGameplayEffectSpecToSelf(
+        *DamageSpecHandle.Data.Get()
+    );
+
+    // Nie powtarzaj obrażeń temu aktorowi w czasie życia tego pola.
+    AffectedActors.Add(WeakTarget);
+
+    for (const TSubclassOf<UGameplayEffect>& EffectClass :
+         AdditionalEffectClasses)
     {
         if (!EffectClass)
         {
+            AuraMagicDebugPrint(
+                TEXT("AREA FIELD WARNING: One additional effect class is empty."),
+                FColor::Orange
+            );
+
             continue;
         }
 
-        FGameplayEffectContextHandle AdditionalContext = SourceASC->MakeEffectContext();
+        FGameplayEffectContextHandle AdditionalContext =
+            SourceASC->MakeEffectContext();
 
         AdditionalContext.SetAbility(SourceAbility);
         AdditionalContext.AddSourceObject(SourceActor);
 
-        const FGameplayEffectSpecHandle AdditionalSpec = SourceASC->MakeOutgoingSpec(EffectClass,AbilityLevel,AdditionalContext);
-
-        if (AdditionalSpec.IsValid() && AdditionalSpec.Data.IsValid())
-        {
-            TargetASC->ApplyGameplayEffectSpecToSelf(*AdditionalSpec.Data.Get()
+        const FGameplayEffectSpecHandle AdditionalSpec =
+            SourceASC->MakeOutgoingSpec(
+                EffectClass,
+                AbilityLevel,
+                AdditionalContext
             );
+
+        if (!AdditionalSpec.IsValid() ||
+            !AdditionalSpec.Data.IsValid())
+        {
+            AuraMagicDebugPrint(
+                FString::Printf(
+                    TEXT("AREA FIELD ERROR: Could not create spec for %s"),
+                    *GetNameSafe(EffectClass.Get())
+                ),
+                FColor::Red
+            );
+
+            continue;
         }
+
+        AuraMagicDebugPrint(
+            FString::Printf(
+                TEXT("AREA FIELD: Applying additional effect %s to %s"),
+                *GetNameSafe(EffectClass.Get()),
+                *GetNameSafe(OtherActor)
+            ),
+            FColor::Green
+        );
+
+        TargetASC->ApplyGameplayEffectSpecToSelf(
+            *AdditionalSpec.Data.Get()
+        );
     }
 
     if (bApplyKnockback)
     {
-        if (ACharacter* TargetCharacter = Cast<ACharacter>(OtherActor))
-        {
-            FVector Direction = TargetCharacter->GetActorLocation() -GetActorLocation();
+        AuraMagicDebugPrint(
+            FString::Printf(
+                TEXT("AREA FIELD: Knockback requested. EffectClass=%s"),
+                *GetNameSafe(KnockbackEffectClass.Get())
+            ),
+            KnockbackEffectClass ? FColor::Green : FColor::Red
+        );
 
-            Direction.Z = 0.f;
-            Direction = Direction.GetSafeNormal();
-
-            if (!Direction.IsNearlyZero())
-            {
-                const float SourceKnockback = SourceASC->GetNumericAttribute(UAuraAttributeSet::GetKnockbackAttribute());
-                const float EffectiveStrength =KnockbackStrength *(1.f + FMath::Max(SourceKnockback, 0.f) * 0.01f);
-
-                TargetCharacter->LaunchCharacter(Direction * EffectiveStrength +FVector(0.f, 0.f, EffectiveStrength * 0.2f),true,true
-                );
-            }
-        }
+        ApplyKnockbackEffect(OtherActor, SourceASC, TargetASC);
     }
+}
+
+void AAuraAreaSpellField::ApplyKnockbackEffect(
+    AActor* OtherActor,
+    UAbilitySystemComponent* SourceASC,
+    UAbilitySystemComponent* TargetASC)
+{
+    if (!bApplyKnockback ||
+        !IsValid(OtherActor) ||
+        !IsValid(SourceASC) ||
+        !IsValid(TargetASC))
+    {
+        return;
+    }
+
+    if (!KnockbackEffectClass)
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("[Knockback] KnockbackEffectClass is not assigned.")
+        );
+        return;
+    }
+
+    const float SourceKnockback =
+        SourceASC->GetNumericAttribute(
+            UAuraAttributeSet::GetKnockbackAttribute()
+        );
+
+    const float EffectiveStrength =
+        KnockbackStrength *
+        (1.f + FMath::Max(SourceKnockback, 0.f) * 0.01f);
+
+    FGameplayEffectContextHandle ContextHandle =
+        SourceASC->MakeEffectContext();
+
+    ContextHandle.SetAbility(SourceAbility);
+    ContextHandle.AddSourceObject(SourceActor);
+    ContextHandle.AddOrigin(GetActorLocation());
+
+    const FGameplayEffectSpecHandle SpecHandle =
+        SourceASC->MakeOutgoingSpec(
+            KnockbackEffectClass,
+            AbilityLevel,
+            ContextHandle
+        );
+
+    if (!SpecHandle.IsValid() ||
+        !SpecHandle.Data.IsValid())
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("[Knockback] Failed to create GameplayEffectSpec.")
+        );
+        return;
+    }
+
+    UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(
+        SpecHandle,
+        FAuraGameplayTags::Get().Status_Knockback,
+        EffectiveStrength
+    );
+
+    TargetASC->ApplyGameplayEffectSpecToSelf(
+        *SpecHandle.Data.Get()
+    );
+
+    UE_LOG(
+        LogTemp,
+        Warning,
+        TEXT("[Knockback] GE applied to %s | Strength=%.1f"),
+        *GetNameSafe(OtherActor),
+        EffectiveStrength
+    );
 }

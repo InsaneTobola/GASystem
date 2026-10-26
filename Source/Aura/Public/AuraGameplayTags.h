@@ -95,6 +95,7 @@ public:
 	FGameplayTag Status_Slow;
 	FGameplayTag Status_Burn;
 	FGameplayTag Status_Frost;
+	FGameplayTag Status_Knockback;
 	
 	
 	

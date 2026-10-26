@@ -126,11 +126,23 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 		
 		float DamageTypeValue = Spec.GetSetByCallerMagnitude(Pair.Key, false, 0.f);
 		
+		const float RawDamageTypeValue = DamageTypeValue;
+		
 		float Resistance = 0.f;
 		ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(CaptureDef, EvaluationParameters, Resistance);
 		Resistance = FMath::Clamp(Resistance, 0.f, 100.f);
 		
 		DamageTypeValue *= (100.f - Resistance)/100.f;
+		
+		UE_LOG(
+	LogTemp,
+	Warning,
+	TEXT("[ExecCalc_Damage] Type=%s Raw=%.2f Resistance=%.2f AfterResistance=%.2f"),
+	*Pair.Key.ToString(),
+	RawDamageTypeValue,
+	Resistance,
+	DamageTypeValue
+);
 		
 		Damage += DamageTypeValue;
 	}
@@ -216,6 +228,13 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 	{
 		Damage *= SourceCriticalHitDamage;
 	}
+	UE_LOG(
+	LogTemp,
+	Warning,
+	TEXT("[ExecCalc_Damage] FinalDamage=%.2f Target=%s"),
+	Damage,
+	*GetNameSafe(TargetAvatar)
+);
 	
 	const FGameplayModifierEvaluatedData EvaluatedData(UAuraAttributeSet::GetIncomingDamageAttribute(), EGameplayModOp::Additive, Damage);
 	OutExecutionOutput.AddOutputModifier(EvaluatedData);

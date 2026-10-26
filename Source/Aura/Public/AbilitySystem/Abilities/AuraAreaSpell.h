@@ -56,7 +56,10 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effects|Knockback")
     bool bEnableKnockback = false;
-
+    
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effects|Knockback")
+    TSubclassOf<UGameplayEffect> KnockbackEffectClass;
+    
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effects|Knockback")
     float KnockbackStrength = 600.f;
 

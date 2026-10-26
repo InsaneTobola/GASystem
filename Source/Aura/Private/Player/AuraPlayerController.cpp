@@ -20,6 +20,7 @@
 
 #include "Input/AuraInputComponent.h"
 #include "Interaction/EnemyInterface.h"
+#include "Magic/MagicDebug.h"
 
 #include "Magic/UAuraMagicComponent.h"
 #include "Magic/MagicPointCloudRecognizer.h"
@@ -366,10 +367,24 @@ void AAuraPlayerController::ShowDamageNumber_Implementation(float DamageAmount, 
 
 void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName PatternId, EMagicElement Element, FVector TargetLocation)
 {
+	AuraMagicDebugPrint(
+	FString::Printf(
+		TEXT("SERVER: Cast request Pattern=%s Element=%d Location=(%.0f, %.0f, %.0f)"),
+		*PatternId.ToString(),
+		static_cast<int32>(Element),
+		TargetLocation.X,
+		TargetLocation.Y,
+		TargetLocation.Z
+	),
+	FColor::Cyan,
+	5.f
+);
+	
 	 AAuraCharacter* AuraCharacter = Cast<AAuraCharacter>(GetPawn());
 
     if (!IsValid(AuraCharacter) || !IsValid(AuraCharacter->MagicComponent))
     {
+    	AuraMagicDebugPrint(TEXT("SERVER REJECT: Invalid character or MagicComponent."), FColor::Red);
         ClientMagicTargetRejected();
         return;
     }
@@ -378,6 +393,7 @@ void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName Patter
 
     if (!IsValid(ASC))
     {
+    	AuraMagicDebugPrint(TEXT("SERVER REJECT: AbilitySystemComponent is invalid."), FColor::Red);
         ClientMagicTargetRejected();
         return;
     }
@@ -386,6 +402,7 @@ void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName Patter
 
     if (!IsValid(Pattern) || Pattern->Element != Element || !Pattern->SkillAbilityClass)
     {
+    	AuraMagicDebugPrint(TEXT("SERVER REJECT: Pattern, element or ability class is invalid."), FColor::Red);
         ClientMagicTargetRejected();
         return;
     }
@@ -394,6 +411,7 @@ void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName Patter
 
     if (!SpellDefaults || !ASC->FindAbilitySpecFromClass(Pattern->SkillAbilityClass))
     {
+    	AuraMagicDebugPrint(TEXT("SERVER REJECT: Ability spec was not granted or class is invalid."), FColor::Red);
         ClientMagicTargetRejected();
         return;
     }
@@ -407,6 +425,7 @@ void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName Patter
 
     if (!GetWorld()->LineTraceSingleByChannel(GroundHit,TraceStart,TraceEnd,ECC_WorldStatic,QueryParams))
     {
+    	AuraMagicDebugPrint(TEXT("SERVER REJECT: Ground trace failed."), FColor::Red);
         ClientMagicTargetRejected();
         return;
     }
@@ -416,6 +435,7 @@ void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName Patter
 
     if (Distance2D > SpellDefaults->GetMaxRangeCm())
     {
+    	AuraMagicDebugPrint(TEXT("SERVER REJECT: Target is outside maximum range."), FColor::Red);
         ClientMagicTargetRejected();
         return;
     }
@@ -425,18 +445,33 @@ void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName Patter
         ValidatedLocation
     );
 
-    if (!ASC->TryActivateAbilityByClass(Pattern->SkillAbilityClass))
-    {
-        AuraCharacter->MagicComponent->ClearPendingCast();
-        ClientMagicTargetRejected();
-        return;
-    }
+	if (!ASC->TryActivateAbilityByClass(Pattern->SkillAbilityClass))
+	{
+		AuraMagicDebugPrint(
+			TEXT("SERVER REJECT: TryActivateAbilityByClass returned false."),
+			FColor::Red
+		);
 
-    ClientMagicTargetAccepted();
+		AuraCharacter->MagicComponent->ClearPendingCast();
+		ClientMagicTargetRejected();
+		return;
+	}
+
+	AuraMagicDebugPrint(
+		TEXT("SERVER: Ability activation accepted. Waiting for field spawn result."),
+		FColor::Yellow,
+		5.f
+	);
 }
 
 void AAuraPlayerController::ClientMagicTargetAccepted_Implementation()
 {
+	AuraMagicDebugPrint(
+	   TEXT("MAGIC CAST SUCCESS: Area field was spawned."),
+	   FColor::Green,
+	   5.f
+   );
+	
 	if (IsValid(MagicTargetingActor))
 	{
 		MagicTargetingActor->Destroy();
@@ -446,7 +481,6 @@ void AAuraPlayerController::ClientMagicTargetAccepted_Implementation()
 	
 	bMagicTargetingMode = false;
 	bWaitingForMagicCastResponse = false;
-
 	PendingMagicPatternId = NAME_None;
 
 	if (UAuraMagicComponent* MagicComponent = GetMagicComponent())
@@ -457,6 +491,12 @@ void AAuraPlayerController::ClientMagicTargetAccepted_Implementation()
 
 void AAuraPlayerController::ClientMagicTargetRejected_Implementation()
 {
+	AuraMagicDebugPrint(
+	   TEXT("MAGIC CAST FAILED: Check the preceding server log."),
+	   FColor::Red,
+	   6.f
+   );
+	
 	bWaitingForMagicCastResponse = false;
 
 	UE_LOG(

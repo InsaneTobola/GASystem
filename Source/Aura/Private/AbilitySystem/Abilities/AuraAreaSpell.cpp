@@ -9,7 +9,9 @@
 #include "Character/AuraCharacter.h"
 #include "Magic/UAuraMagicComponent.h"
 #include "Magic/MagicPatternDefinition.h"
+#include "Magic/MagicDebug.h"
 
+#include "Player/AuraPlayerController.h"
 #include "Engine/World.h"
 
 UAuraAreaSpell::UAuraAreaSpell()
@@ -47,25 +49,29 @@ float UAuraAreaSpell::CalculateDurationSeconds(const UAbilitySystemComponent* So
         DamageOnTime = SourceASC->GetNumericAttribute(UAuraAttributeSet::GetDamageOnTimeAttribute());
     }
 
-    return FMath::Clamp(
-        BaseDurationSeconds +
-        FMath::Max(DamageOnTime, 0.f) *
-        FMath::Max(SecondsPerDamageOnTimePoint, 0.f),
-        BaseDurationSeconds,
-        MaxDurationSeconds
-    );
+    return FMath::Clamp(BaseDurationSeconds + FMath::Max(DamageOnTime, 0.f) *FMath::Max(SecondsPerDamageOnTimePoint, 0.f),BaseDurationSeconds,MaxDurationSeconds);
 }
 
-void UAuraAreaSpell::ActivateAbility(
-    const FGameplayAbilitySpecHandle Handle,
-    const FGameplayAbilityActorInfo* ActorInfo,
-    const FGameplayAbilityActivationInfo ActivationInfo,
-    const FGameplayEventData* TriggerEventData)
+void UAuraAreaSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
+    const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
+    AuraMagicDebugPrint(
+    FString::Printf(
+        TEXT("AREA SPELL: ActivateAbility started. Class=%s"),
+        *GetNameSafe(GetClass())
+    ),
+    FColor::Cyan,
+    5.f
+);
+    
     Super::ActivateAbility(Handle,ActorInfo,ActivationInfo,TriggerEventData);
 
     if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
     {
+        AuraMagicDebugPrint(
+        TEXT("AREA SPELL FAILED: CommitAbility failed (cost, cooldown or activation rules)."),
+        FColor::Red
+    );
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
@@ -80,6 +86,18 @@ void UAuraAreaSpell::ActivateAbility(
         !DamageEffectClass ||
         !AreaFieldClass)
     {
+        AuraMagicDebugPrint(
+      FString::Printf(
+          TEXT("AREA SPELL FAILED: Character=%d MagicComponent=%d ASC=%d DamageEffect=%s FieldClass=%s"),
+          IsValid(Character) ? 1 : 0,
+          IsValid(Character) && IsValid(Character->MagicComponent) ? 1 : 0,
+          IsValid(SourceASC) ? 1 : 0,
+          *GetNameSafe(DamageEffectClass.Get()),
+          *GetNameSafe(AreaFieldClass.Get())
+      ),
+      FColor::Red,
+      6.f
+  );
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
@@ -89,10 +107,25 @@ void UAuraAreaSpell::ActivateAbility(
 
     if (!Character->MagicComponent->ConsumePendingCast(PatternId,TargetLocation))
     {
+        AuraMagicDebugPrint(
+         TEXT("AREA SPELL FAILED: No pending pattern/target data."),
+         FColor::Red
+     );
+        
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
-
+    
+    AuraMagicDebugPrint(
+        FString::Printf(
+            TEXT("AREA SPELL: Pending cast received. Pattern=%s Target=(%.0f, %.0f, %.0f)"),
+            *PatternId.ToString(),
+            TargetLocation.X,
+            TargetLocation.Y,
+            TargetLocation.Z
+        ),
+        FColor::Cyan);
+    
     UMagicPatternDefinition* Pattern = Character->MagicComponent->FindPatternDefinition(PatternId);
 
     if (!IsValid(Pattern) || Pattern->SkillAbilityClass != GetClass())
@@ -115,7 +148,29 @@ void UAuraAreaSpell::ActivateAbility(
     {
         ScaledDamageValues.Add(Pair.Key,Pair.Value.GetValueAtLevel(AbilityLevel));
     }
+    AuraMagicDebugPrint(
+        FString::Printf(
+            TEXT("AREA SPELL: DamageEffect=%s | Damage entries=%d | AbilityLevel=%d"),
+            *GetNameSafe(DamageEffectClass.Get()),
+            ScaledDamageValues.Num(),
+            AbilityLevel
+        ),
+        ScaledDamageValues.Num() > 0 ? FColor::Green : FColor::Red,
+        5.f
+    );
 
+    for (const TPair<FGameplayTag, float>& Pair : ScaledDamageValues)
+    {
+        AuraMagicDebugPrint(
+            FString::Printf(
+                TEXT("DAMAGE CONFIG: %s = %.2f"),
+                *Pair.Key.ToString(),
+                Pair.Value
+            ),
+            FColor::Yellow,
+            3.f
+        );
+    }
     TArray<TSubclassOf<UGameplayEffect>> AdditionalEffects;
 
     if (bEnableSlow && SlowEffectClass)
@@ -168,6 +223,7 @@ void UAuraAreaSpell::ActivateAbility(
         Radius,
         Duration,
         DamageEffectClass,
+        KnockbackEffectClass,
         ScaledDamageValues,
         AbilityLevel,
         this,
@@ -180,5 +236,22 @@ void UAuraAreaSpell::ActivateAbility(
 
     Field->FinishSpawning(SpawnTransform);
 
+    AuraMagicDebugPrint(
+    FString::Printf(
+        TEXT("AREA SPELL SUCCESS: Field=%s | Radius=%.1f cm | Duration=%.2f s"),
+        *GetNameSafe(Field),
+        Radius,
+        Duration
+    ),
+    FColor::Green,
+    6.f
+);
+
+    if (AAuraPlayerController* PC =
+        Cast<AAuraPlayerController>(Character->GetController()))
+    {
+        PC->ClientMagicTargetAccepted();
+    }
+    
     EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }

@@ -8,8 +8,6 @@
 #include "Magic/MagicTypes.h"
 #include "AuraPlayerController.generated.h"
 
-
-
 class UInputMappingContext;
 class UInputAction;
 class UDamageTextComponent;
@@ -17,7 +15,6 @@ class IEnemyInterface;
 class UAuraInputConfig;
 class UAuraAbilitySystemComponent;
 class USplineComponent;
-
 class UAuraMagicDrawingWidget;
 class UAuraMagicComponent;
 class SUAuraMagicDrawingWidget;
@@ -49,6 +46,12 @@ public:
 	void StartMagicTargeting(UMagicPatternDefinition* Pattern);
 	void CancelMagicTargeting();
 	void ConfirmMagicTargeting();
+	
+	UFUNCTION(Client, Reliable)
+	void ClientMagicTargetAccepted();
+
+	UFUNCTION(Client, Reliable)
+	void ClientMagicTargetRejected();
 	
 protected:
 	virtual void BeginPlay() override;
@@ -125,10 +128,6 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerConfirmMagicTarget(FName PatternId,EMagicElement Element,FVector TargetLocation);
 
-	UFUNCTION(Client, Reliable)
-	void ClientMagicTargetAccepted();
-
-	UFUNCTION(Client, Reliable)
-	void ClientMagicTargetRejected();
+	
 	
 };

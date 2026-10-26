@@ -1,5 +1,6 @@
 #pragma once
 
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "GameplayTagContainer.h"
@@ -25,10 +26,10 @@ public:
 
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-    void InitializeField(float InAreaRadiusCm,float InDurationSeconds,TSubclassOf<UGameplayEffect> InDamageEffectClass,
-        const TMap<FGameplayTag, float>& InDamageValues,int32 InAbilityLevel,UGameplayAbility* InSourceAbility,
-        AActor* InSourceActor,const TArray<TSubclassOf<UGameplayEffect>>& InAdditionalEffects,bool bInAffectOnlyEnemies,
-        bool bInApplyKnockback,float InKnockbackStrength
+    void InitializeField(float InAreaRadiusCm,float InDurationSeconds,TSubclassOf<UGameplayEffect> InDamageEffectClass, 
+    TSubclassOf<UGameplayEffect> InKnockbackEffectClass, const TMap<FGameplayTag, float>& InDamageValues,
+        int32 InAbilityLevel,UGameplayAbility* InSourceAbility, AActor* InSourceActor,const TArray<TSubclassOf<UGameplayEffect>>& InAdditionalEffects,
+        bool bInAffectOnlyEnemies, bool bInApplyKnockback,float InKnockbackStrength
     );
 
 protected:
@@ -63,6 +64,9 @@ private:
     TSubclassOf<UGameplayEffect> DamageEffectClass;
 
     UPROPERTY(Transient)
+    TSubclassOf<UGameplayEffect> KnockbackEffectClass;
+    
+    UPROPERTY(Transient)
     TArray<TSubclassOf<UGameplayEffect>> AdditionalEffectClasses;
 
     UPROPERTY(Transient)
@@ -92,4 +96,6 @@ private:
     void UpdateVisuals();
 
     void ApplyToActor(AActor* OtherActor);
+
+    void ApplyKnockbackEffect(AActor* OtherActor,UAbilitySystemComponent* SourceASC,UAbilitySystemComponent* TargetASC);
 };

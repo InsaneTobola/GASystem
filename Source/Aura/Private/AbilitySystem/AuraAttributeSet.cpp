@@ -13,6 +13,7 @@
 #include "AI/AIAuraThreatSubsystem.h"
 #include "AI/AIAuraThreatTypes.h"
 #include "Character/AuraEnemy.h"
+#include "Magic/MagicDebug.h"
 #include "Interaction/CombatInterface.h"
 #include "Interaction/PlayerInterface.h"
 #include "Player/AuraPlayerController.h"
@@ -152,6 +153,52 @@ void UAuraAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
     FEffectProperties Props;
     SetEffectProperties(Data, Props);
 
+	if (Data.EvaluatedData.Attribute == GetIncomingKnockbackAttribute())
+	{
+		const float KnockbackStrength = GetIncomingKnockback();
+
+		SetIncomingKnockback(0.f);
+
+		if (KnockbackStrength > 0.f &&
+			IsValid(Props.TargetCharacter))
+		{
+			const FGameplayEffectContext* Context =
+				Props.EffectContextHandle.Get();
+
+			const FVector Origin =
+				Context && Context->HasOrigin()
+					? Context->GetOrigin()
+					: IsValid(Props.SourceAvatarActor)
+						? Props.SourceAvatarActor->GetActorLocation()
+						: Props.TargetCharacter->GetActorLocation();
+
+			FVector Direction =
+				Props.TargetCharacter->GetActorLocation() - Origin;
+
+			Direction.Z = 0.f;
+			Direction = Direction.GetSafeNormal();
+
+			if (!Direction.IsNearlyZero())
+			{
+				Props.TargetCharacter->LaunchCharacter(
+					Direction * KnockbackStrength +
+						FVector(0.f, 0.f, KnockbackStrength * 0.2f),
+					true,
+					true
+				);
+
+				AuraMagicDebugPrint(
+					FString::Printf(
+						TEXT("KNOCKBACK APPLIED: Target=%s Strength=%.1f"),
+						*GetNameSafe(Props.TargetCharacter),
+						KnockbackStrength
+					),
+					FColor::Green
+				);
+			}
+		}
+	}
+	
     if (Data.EvaluatedData.Attribute == GetHealthAttribute())
     {
         SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
