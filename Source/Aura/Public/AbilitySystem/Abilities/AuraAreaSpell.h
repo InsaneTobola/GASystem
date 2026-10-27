@@ -92,4 +92,8 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effects|Mana Regeneration")
     TSubclassOf<UGameplayEffect> ManaRegenerationEffectClass;
+    
+private:
+    
+    void RejectMagicCast(const FGameplayAbilityActorInfo* ActorInfo) const;
 };

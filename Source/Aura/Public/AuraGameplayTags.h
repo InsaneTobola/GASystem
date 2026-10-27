@@ -69,6 +69,7 @@ public:
 	FGameplayTag Damage;
 	FGameplayTag HitReact;
 	
+	TMap<FGameplayTag, FGameplayTag> DamageTypesToPrimaryAttributes;
 	TMap<FGameplayTag, FGameplayTag> DamageTypesToResistances;
 	
 	FGameplayTag State_Idle;

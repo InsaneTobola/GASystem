@@ -12,6 +12,11 @@
 
 struct AuraDamageStatics
 {
+	DECLARE_ATTRIBUTE_CAPTUREDEF(Fire);
+	DECLARE_ATTRIBUTE_CAPTUREDEF(Water);
+	DECLARE_ATTRIBUTE_CAPTUREDEF(Earth);
+	DECLARE_ATTRIBUTE_CAPTUREDEF(Air);
+	
 	DECLARE_ATTRIBUTE_CAPTUREDEF(Armor);
 	DECLARE_ATTRIBUTE_CAPTUREDEF(ArmorPenetration);
 	DECLARE_ATTRIBUTE_CAPTUREDEF(BlockChance);
@@ -28,6 +33,11 @@ struct AuraDamageStatics
 	
 	AuraDamageStatics()
 	{
+		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, Fire, Source, false);
+		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, Water, Source, false);
+		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, Earth, Source, false);
+		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, Air, Source, false);
+		
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, Armor, Target, false);
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, ArmorPenetration, Source, false);
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, BlockChance, Target, false);
@@ -41,6 +51,11 @@ struct AuraDamageStatics
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, AirResistance, Target, false);
 	
 		const FAuraGameplayTags& Tags = FAuraGameplayTags::Get();
+		
+		TagsToCaptureDefs.Add(Tags.Attributes_Primary_Fire, FireDef);
+		TagsToCaptureDefs.Add(Tags.Attributes_Primary_Water, WaterDef);
+		TagsToCaptureDefs.Add(Tags.Attributes_Primary_Earth, EarthDef);
+		TagsToCaptureDefs.Add(Tags.Attributes_Primary_Air, AirDef);
 		
 		TagsToCaptureDefs.Add(Tags.Attributes_Secondary_Armor, ArmorDef);
 		TagsToCaptureDefs.Add(Tags.Attributes_Secondary_ArmorPenetration, ArmorPenetrationDef);
@@ -64,6 +79,11 @@ static const AuraDamageStatics& DamageStatics()
 
 UExecCalc_Damage::UExecCalc_Damage()
 {
+	RelevantAttributesToCapture.Add(DamageStatics().FireDef);
+	RelevantAttributesToCapture.Add(DamageStatics().WaterDef);
+	RelevantAttributesToCapture.Add(DamageStatics().EarthDef);
+	RelevantAttributesToCapture.Add(DamageStatics().AirDef);
+	
 	RelevantAttributesToCapture.Add(DamageStatics().ArmorDef);
 	RelevantAttributesToCapture.Add(DamageStatics().ArmorPenetrationDef);
 	RelevantAttributesToCapture.Add(DamageStatics().BlockChanceDef);
@@ -102,11 +122,18 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 	{
 		TargetPlayerLevel = ICombatInterface::Execute_GetPlayerLevel(TargetAvatar);
 	}
-		
-	
-	
+	UE_LOG(
+	LogTemp,
+	Warning,
+	TEXT("[ElementalDebug] SourceASC=%s | SourceAvatar=%s | Fire=%.2f | Water=%.2f | Earth=%.2f | Air=%.2f"),
+	*GetNameSafe(SourceASC),
+	*GetNameSafe(SourceAvatar),
+	SourceASC->GetNumericAttribute(UAuraAttributeSet::GetFireAttribute()),
+	SourceASC->GetNumericAttribute(UAuraAttributeSet::GetWaterAttribute()),
+	SourceASC->GetNumericAttribute(UAuraAttributeSet::GetEarthAttribute()),
+	SourceASC->GetNumericAttribute(UAuraAttributeSet::GetAirAttribute())
+);
 	const FGameplayEffectSpec& Spec = ExecutionParams.GetOwningSpec();
-	
 	const FGameplayTagContainer* SourceTags = Spec.CapturedSourceTags.GetAggregatedTags();
 	const FGameplayTagContainer* TargetTags = Spec.CapturedTargetTags.GetAggregatedTags();
 	FAggregatorEvaluateParameters EvaluationParameters;
@@ -127,6 +154,41 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 		float DamageTypeValue = Spec.GetSetByCallerMagnitude(Pair.Key, false, 0.f);
 		
 		const float RawDamageTypeValue = DamageTypeValue;
+
+		float ElementalPower = 0.f;
+		float ElementalMultiplier = 1.f;
+
+		const FAuraGameplayTags& GameplayTags = FAuraGameplayTags::Get();
+		const FGameplayTag* PrimaryAttributeTag = GameplayTags.DamageTypesToPrimaryAttributes.Find(DamageTypeTag);
+
+		if (PrimaryAttributeTag)
+		{
+			const FGameplayEffectAttributeCaptureDefinition* ElementalCaptureDef = AuraDamageStatics().TagsToCaptureDefs.Find(*PrimaryAttributeTag);
+
+			if (ElementalCaptureDef)
+			{
+				const bool bCaptured = ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(*ElementalCaptureDef,EvaluationParameters,ElementalPower);
+				if (!bCaptured)
+				{
+					ElementalPower = 0.f;
+					UE_LOG(LogTemp,Warning,TEXT("[ExecCalc_Damage] Failed to capture ""elemental attribute for %s"),*DamageTypeTag.ToString());
+				}
+			}
+			else
+			{
+				UE_LOG(LogTemp,Error,TEXT("[ExecCalc_Damage] Missing capture definition ""for elemental attribute of %s"),*DamageTypeTag.ToString());
+			}
+			ElementalPower = FMath::Max(ElementalPower, 0.f);
+
+			// Starting balance value: +1% damage per attribute point.
+			constexpr float ElementalDamageScalePerPoint = 0.01f;
+			ElementalMultiplier = 1.f + ElementalPower * ElementalDamageScalePerPoint;
+			DamageTypeValue *= ElementalMultiplier;
+		}
+		else
+		{
+			UE_LOG(LogTemp,Warning,TEXT("[ExecCalc_Damage] No elemental scaling mapping ""for damage type %s"),*DamageTypeTag.ToString());
+		}
 		
 		float Resistance = 0.f;
 		ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(CaptureDef, EvaluationParameters, Resistance);

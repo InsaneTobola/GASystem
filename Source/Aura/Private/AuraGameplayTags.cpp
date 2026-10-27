@@ -82,14 +82,24 @@ void FAuraGameplayTags::InitializeNativeGameplayTags()
 	 * Map of Damage Types to Resistance
 	 */
 	
+	GameplayTags.DamageTypesToPrimaryAttributes.Add(GameplayTags.Damage_Fire,GameplayTags.Attributes_Primary_Fire);
+	GameplayTags.DamageTypesToPrimaryAttributes.Add(GameplayTags.Damage_Water,GameplayTags.Attributes_Primary_Water);
+	GameplayTags.DamageTypesToPrimaryAttributes.Add(GameplayTags.Damage_Earth,GameplayTags.Attributes_Primary_Earth);
+	GameplayTags.DamageTypesToPrimaryAttributes.Add(GameplayTags.Damage_Air,GameplayTags.Attributes_Primary_Air);
+	
+	/*
+	 * Meta Attributes
+	 */
+	
 	GameplayTags.Attributes_Meta_IncomingXP = UGameplayTagsManager::Get().AddNativeGameplayTag(
 	FName("Attributes.Meta.IncomingXP"), 
 	FString("Meta IncomingXP")
 	);
 	
 	/*
-	 *Secondary Attributes
+	 * Secondary Attributes
 	 */
+	
 	GameplayTags.Attributes_Secondary_DamageOnTime = UGameplayTagsManager::Get().AddNativeGameplayTag(
 		FName("Attributes.Secondary.DamageOnTime"), 
 		FString("Increases Damage on time")

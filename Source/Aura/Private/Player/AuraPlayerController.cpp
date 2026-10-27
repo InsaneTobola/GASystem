@@ -75,6 +75,7 @@ void AAuraPlayerController::StartMagicDrawingMode()
 
 		if (MagicDrawingWidget)
 		{
+			MagicDrawingWidget->SetIsFocusable(false);
 			MagicDrawingWidget->AddToViewport();
 			MagicDrawingWidget->InitializeDrawing(GetMagicComponent());
 		}
@@ -91,12 +92,7 @@ void AAuraPlayerController::StartMagicDrawingMode()
 	bMagicDrawingMode = true;
 	bShowMouseCursor = true;
 
-	FInputModeGameAndUI InputModeData;
-
-	InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-	InputModeData.SetHideCursorDuringCapture(false);
-
-	SetInputMode(InputModeData);
+	
 }
 
 
@@ -417,7 +413,7 @@ void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName Patter
     }
 
     FHitResult GroundHit;
-    FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(MagicTargetValidation),true);
+    FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(MagicTargetValidation),false);
     QueryParams.AddIgnoredActor(AuraCharacter);
 
     const FVector TraceStart = TargetLocation + FVector(0.f, 0.f, 5000.f);

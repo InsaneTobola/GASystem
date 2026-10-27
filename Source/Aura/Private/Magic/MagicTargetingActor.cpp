@@ -99,7 +99,31 @@ void AAuraMagicTargetingActor::Tick(float DeltaTime)
         UpdateRangeRing();
         return;
     }
-
+    if (const UPrimitiveComponent* HitComponent = Hit.GetComponent())
+    {
+        UE_LOG(
+            LogTemp,
+            Warning,
+            TEXT(
+                "[MagicTargeting] Actor=%s | Component=%s | "
+                "Location=(%.1f, %.1f, %.1f) | "
+                "ObjectType=%d | WorldStaticResponse=%d | "
+                "VisibilityResponse=%d"
+            ),
+            *GetNameSafe(Hit.GetActor()),
+            *GetNameSafe(HitComponent),
+            Hit.Location.X,
+            Hit.Location.Y,
+            Hit.Location.Z,
+            static_cast<int32>(HitComponent->GetCollisionObjectType()),
+            static_cast<int32>(
+                HitComponent->GetCollisionResponseToChannel(ECC_WorldStatic)
+            ),
+            static_cast<int32>(
+                HitComponent->GetCollisionResponseToChannel(ECC_Visibility)
+            )
+        );
+    }
     CurrentTargetLocation = Hit.Location;
     AreaMesh->SetVisibility(true);
     AreaMesh->SetWorldLocation(Hit.Location + Hit.Normal * 3.f);

@@ -2,6 +2,7 @@
 
 #include "Actor/AuraAreaSpellField.h"
 #include "AbilitySystem/AuraAttributeSet.h"
+#include "AuraGameplayTags.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
@@ -19,6 +20,37 @@ UAuraAreaSpell::UAuraAreaSpell()
     InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerExecution;
 
     NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
+}
+
+void UAuraAreaSpell::RejectMagicCast(const FGameplayAbilityActorInfo* ActorInfo) const
+{
+    AAuraCharacter* Character = ActorInfo ? Cast<AAuraCharacter>(ActorInfo->AvatarActor.Get()): nullptr;
+
+    // Clear any pending cast data on the server.
+    if (IsValid(Character) &&IsValid(Character->MagicComponent))
+    {
+        Character->MagicComponent->ClearPendingCast();
+    }
+
+    // Find the owning player controller.
+    AAuraPlayerController* PC = nullptr;
+
+    if (ActorInfo)
+    {
+        PC = Cast<AAuraPlayerController>(ActorInfo->PlayerController.Get());
+    }
+
+    // Fallback: get the controller directly from the character.
+    if (!IsValid(PC) && IsValid(Character))
+    {
+        PC = Cast<AAuraPlayerController>(Character->GetController());
+    }
+
+    // Notify the client so it stops waiting for a response.
+    if (IsValid(PC))
+    {
+        PC->ClientMagicTargetRejected();
+    }
 }
 
 float UAuraAreaSpell::GetMaxRangeCm() const
@@ -52,27 +84,21 @@ float UAuraAreaSpell::CalculateDurationSeconds(const UAbilitySystemComponent* So
     return FMath::Clamp(BaseDurationSeconds + FMath::Max(DamageOnTime, 0.f) *FMath::Max(SecondsPerDamageOnTimePoint, 0.f),BaseDurationSeconds,MaxDurationSeconds);
 }
 
-void UAuraAreaSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
-    const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+void UAuraAreaSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
     AuraMagicDebugPrint(
     FString::Printf(
         TEXT("AREA SPELL: ActivateAbility started. Class=%s"),
-        *GetNameSafe(GetClass())
-    ),
-    FColor::Cyan,
-    5.f
-);
+        *GetNameSafe(GetClass())),FColor::Cyan,5.f);
     
     Super::ActivateAbility(Handle,ActorInfo,ActivationInfo,TriggerEventData);
 
     if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
     {
         AuraMagicDebugPrint(
-        TEXT("AREA SPELL FAILED: CommitAbility failed (cost, cooldown or activation rules)."),
-        FColor::Red
-    );
-        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+        TEXT("AREA SPELL FAILED: CommitAbility failed (cost, cooldown or activation rules)."),FColor::Red);
+        RejectMagicCast(ActorInfo);
+        EndAbility(Handle,ActorInfo,ActivationInfo,true,true);
         return;
     }
 
@@ -111,7 +137,7 @@ void UAuraAreaSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
          TEXT("AREA SPELL FAILED: No pending pattern/target data."),
          FColor::Red
      );
-        
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
@@ -130,18 +156,48 @@ void UAuraAreaSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 
     if (!IsValid(Pattern) || Pattern->SkillAbilityClass != GetClass())
     {
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
 
+    const FAuraGameplayTags& Tags = FAuraGameplayTags::Get();
+
+    FGameplayTag ExpectedDamageTag;
+
+    switch (Pattern->Element)
+    {
+    case EMagicElement::Fire:ExpectedDamageTag = Tags.Damage_Fire;
+        break;
+    case EMagicElement::Water:ExpectedDamageTag = Tags.Damage_Water;
+        break;
+    case EMagicElement::Earth:ExpectedDamageTag = Tags.Damage_Earth;
+        break;
+    case EMagicElement::Air:ExpectedDamageTag = Tags.Damage_Air;
+        break;
+
+    default:break;
+    }
+
+    if (!ExpectedDamageTag.IsValid() || !DamageTypes.Contains(ExpectedDamageTag))
+    {
+        AuraMagicDebugPrint(FString::Printf(
+                TEXT("AREA SPELL FAILED: Pattern %s requires damage ""type %s, but it is not configured in DamageTypes."),*Pattern->PatternId.ToString(),*ExpectedDamageTag.ToString()),
+            FColor::Red,6.f
+        );
+
+        EndAbility(Handle,ActorInfo,ActivationInfo,true,true);
+        return;
+    }
+    
     if (FVector::Dist2D(Avatar->GetActorLocation(),TargetLocation) > MaxRangeCm)
     {
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
 
     const int32 AbilityLevel = GetAbilityLevel();
-
     TMap<FGameplayTag, float> ScaledDamageValues;
 
     for (const TPair<FGameplayTag, FScalableFloat>& Pair : DamageTypes)
@@ -212,6 +268,7 @@ void UAuraAreaSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 
     if (!IsValid(Field))
     {
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
@@ -255,3 +312,5 @@ void UAuraAreaSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
     
     EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
+
+
