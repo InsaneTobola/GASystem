@@ -100,6 +100,12 @@ UExecCalc_Damage::UExecCalc_Damage()
 void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecutionParameters& ExecutionParams,
 	FGameplayEffectCustomExecutionOutput& OutExecutionOutput) const
 {
+	UE_LOG(
+	LogTemp,
+	Warning,
+	TEXT("[ExecCalc_Damage] BUILD_MARKER=ElementalRepair_A")
+);
+	
 	const UAbilitySystemComponent* SourceASC = ExecutionParams.GetSourceAbilitySystemComponent();
 	const UAbilitySystemComponent* TargetASC = ExecutionParams.GetTargetAbilitySystemComponent();
 	
@@ -154,41 +160,77 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 		float DamageTypeValue = Spec.GetSetByCallerMagnitude(Pair.Key, false, 0.f);
 		
 		const float RawDamageTypeValue = DamageTypeValue;
-
-		float ElementalPower = 0.f;
-		float ElementalMultiplier = 1.f;
-
+		
 		const FAuraGameplayTags& GameplayTags = FAuraGameplayTags::Get();
 		const FGameplayTag* PrimaryAttributeTag = GameplayTags.DamageTypesToPrimaryAttributes.Find(DamageTypeTag);
 
 		if (PrimaryAttributeTag)
 		{
-			const FGameplayEffectAttributeCaptureDefinition* ElementalCaptureDef = AuraDamageStatics().TagsToCaptureDefs.Find(*PrimaryAttributeTag);
+			FGameplayAttribute ElementalAttribute;
 
-			if (ElementalCaptureDef)
+			if (*PrimaryAttributeTag == GameplayTags.Attributes_Primary_Fire)
 			{
-				const bool bCaptured = ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(*ElementalCaptureDef,EvaluationParameters,ElementalPower);
-				if (!bCaptured)
-				{
-					ElementalPower = 0.f;
-					UE_LOG(LogTemp,Warning,TEXT("[ExecCalc_Damage] Failed to capture ""elemental attribute for %s"),*DamageTypeTag.ToString());
-				}
+				ElementalAttribute = UAuraAttributeSet::GetFireAttribute();
+			}
+			else if (*PrimaryAttributeTag == GameplayTags.Attributes_Primary_Water)
+			{
+				ElementalAttribute = UAuraAttributeSet::GetWaterAttribute();
+			}
+			else if (*PrimaryAttributeTag == GameplayTags.Attributes_Primary_Earth)
+			{
+				ElementalAttribute = UAuraAttributeSet::GetEarthAttribute();
+			}
+			else if (*PrimaryAttributeTag == GameplayTags.Attributes_Primary_Air)
+			{
+				ElementalAttribute = UAuraAttributeSet::GetAirAttribute();
+			}
+
+			float ElementalPower = 0.f;
+
+			if (ElementalAttribute.IsValid())
+			{
+				ElementalPower =
+					SourceASC->GetNumericAttribute(ElementalAttribute);
 			}
 			else
 			{
-				UE_LOG(LogTemp,Error,TEXT("[ExecCalc_Damage] Missing capture definition ""for elemental attribute of %s"),*DamageTypeTag.ToString());
+				UE_LOG(
+					LogTemp,
+					Error,
+					TEXT("[ExecCalc_Damage] Invalid elemental attribute for %s"),
+					*DamageTypeTag.ToString()
+				);
 			}
+
 			ElementalPower = FMath::Max(ElementalPower, 0.f);
 
-			// Starting balance value: +1% damage per attribute point.
 			constexpr float ElementalDamageScalePerPoint = 0.01f;
-			ElementalMultiplier = 1.f + ElementalPower * ElementalDamageScalePerPoint;
+
+			const float ElementalMultiplier =
+				1.f + ElementalPower * ElementalDamageScalePerPoint;
+
 			DamageTypeValue *= ElementalMultiplier;
+
+			UE_LOG(
+				LogTemp,
+				Warning,
+				TEXT("[ExecCalc_Damage] Elemental scaling: Type=%s Power=%.2f Multiplier=%.2f ScaledDamage=%.2f"),
+				*DamageTypeTag.ToString(),
+				ElementalPower,
+				ElementalMultiplier,
+				DamageTypeValue
+			);
 		}
 		else
 		{
-			UE_LOG(LogTemp,Warning,TEXT("[ExecCalc_Damage] No elemental scaling mapping ""for damage type %s"),*DamageTypeTag.ToString());
+			UE_LOG(
+				LogTemp,
+				Warning,
+				TEXT("[ExecCalc_Damage] No primary attribute mapping for %s"),
+				*DamageTypeTag.ToString()
+			);
 		}
+		
 		
 		float Resistance = 0.f;
 		ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(CaptureDef, EvaluationParameters, Resistance);
@@ -284,6 +326,7 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 	const bool bCriticalHit =FMath::FRand() * 100.f < EffectiveCriticalHitChance;
 	
 	UAuraAbilitySystemLibrary::SetIsCriticalHit(EffectContextHandle, bCriticalHit);
+	
 	
 	// Double damage
 	if (bCriticalHit)
