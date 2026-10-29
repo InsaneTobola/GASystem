@@ -35,6 +35,7 @@ public:
 	FGameplayTag Attributes_Secondary_ManaRegeneration;
 	FGameplayTag Attributes_Secondary_Slow;
 	FGameplayTag Attributes_Secondary_Knockback;
+	FGameplayTag Attributes_Secondary_Knockup;
 	FGameplayTag Attributes_Secondary_Stun;
 	FGameplayTag Attributes_Secondary_Speed;
 	FGameplayTag Attributes_Secondary_AreaOfEffect;
