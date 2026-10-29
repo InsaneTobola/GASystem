@@ -4,6 +4,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystem/AuraAbilitySystemComponent.h"
 #include "AbilitySystem/Abilities/AuraAreaSpell.h"
+#include "AbilitySystem/Abilities/AuraSelfCastSpell.h"
 #include "AbilitySystem/AuraAttributeSet.h"
 #include "AuraGameplayTags.h"
 
@@ -161,6 +162,40 @@ void AAuraPlayerController::ConfirmMagicDrawingMode()
 		return;
 	}
 
+	const UAuraSelfCastSpell* SelfCastDefaults = Cast<UAuraSelfCastSpell>(Pattern->SkillAbilityClass.GetDefaultObject());
+	
+	if (SelfCastDefaults)
+	{
+		// This Self-Cast implementation is for Water only.
+		if (Pattern->Element != EMagicElement::Water)
+		{
+			UE_LOG(
+				LogTemp,
+				Warning,
+				TEXT("Water Self-Cast requires the Water element.")
+			);
+
+			StopMagicDrawingMode();
+			MagicComponent->CancelMagic();
+			return;
+		}
+
+		// Close drawing mode. No world targeting is required.
+		StopMagicDrawingMode();
+		MagicComponent->CancelMagic();
+
+		// Prevent another cast request before the server responds.
+		bWaitingForMagicCastResponse = true;
+
+		ServerConfirmMagicSelfCast(
+			Pattern->PatternId,
+			Pattern->Element
+		);
+
+		return;
+	}
+
+	// Existing Area Spell flow continues below.
 	const UAuraAreaSpell* SpellDefaults = Cast<UAuraAreaSpell>(Pattern->SkillAbilityClass.GetDefaultObject());
 
 	if (!SpellDefaults)
@@ -284,7 +319,7 @@ void AAuraPlayerController::ConfirmMagicTargeting()
 	}
 	bWaitingForMagicCastResponse = true;
 
-	ServerConfirmMagicTarget(PendingMagicPatternId,PendingMagicElement,MagicTargetingActor->GetTargetLocation());
+	ServerConfirmMagicTarget(PendingMagicPatternId,PendingMagicElement,MagicTargetingActor->GetMagicTargetLocation());
 }
 
 UAuraMagicComponent* AAuraPlayerController::GetMagicComponent() const
@@ -359,6 +394,68 @@ void AAuraPlayerController::ShowDamageNumber_Implementation(float DamageAmount, 
 		DamageText->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 		DamageText->SetDamageText(DamageAmount, bBlockedHit, bCriticalHit);
 	}
+}
+
+void AAuraPlayerController::ServerConfirmMagicSelfCast_Implementation(FName PatternId,EMagicElement Element)
+{
+	const auto RejectCast = [this](const TCHAR* Reason)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[MagicSelfCast] Server rejected cast: %s"),
+			Reason
+		);
+
+		ClientMagicSelfCastRejected();
+	};
+
+	AAuraCharacter* AuraCharacter = Cast<AAuraCharacter>(GetPawn());
+
+	if (!IsValid(AuraCharacter) || !IsValid(AuraCharacter->MagicComponent))
+	{
+		RejectCast(TEXT("Invalid character or MagicComponent."));
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(AuraCharacter);
+
+	if (!IsValid(ASC))
+	{
+		RejectCast(TEXT("Invalid AbilitySystemComponent."));
+		return;
+	}
+
+	UMagicPatternDefinition* Pattern = AuraCharacter->MagicComponent->FindPatternDefinition(PatternId);
+
+	if (!IsValid(Pattern) || Pattern->Element != Element || Element != EMagicElement::Water || !Pattern->SkillAbilityClass)
+	{
+		RejectCast(TEXT("Invalid pattern, element or ability class."));
+		return;
+	}
+
+	const UAuraSelfCastSpell* SelfCastDefaults = Cast<UAuraSelfCastSpell>(Pattern->SkillAbilityClass.GetDefaultObject());
+
+	if (!SelfCastDefaults || !ASC->FindAbilitySpecFromClass(Pattern->SkillAbilityClass))
+	{
+		RejectCast(TEXT("Self-Cast class is invalid or not granted to ASC."));
+		return;
+	}
+
+	if (!ASC->TryActivateAbilityByClass(Pattern->SkillAbilityClass))
+	{
+		RejectCast(TEXT("TryActivateAbilityByClass failed."));
+		return;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT("[MagicSelfCast] Activation accepted for pattern: %s"),
+		*PatternId.ToString()
+	);
+
+	// The ability reports final success or failure.
 }
 
 void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName PatternId, EMagicElement Element, FVector TargetLocation)
@@ -502,6 +599,41 @@ void AAuraPlayerController::ClientMagicTargetRejected_Implementation()
 	);
 }
 
+void AAuraPlayerController::ClientMagicSelfCastAccepted_Implementation()
+{
+	bWaitingForMagicCastResponse = false;
+
+	StopMagicDrawingMode();
+
+	if (UAuraMagicComponent* MagicComponent = GetMagicComponent())
+	{
+		MagicComponent->CancelMagic();
+	}
+
+	AuraMagicDebugPrint(
+		TEXT("WATER SELF-CAST SUCCESS: Healing effect applied."),
+		FColor::Green,
+		5.f
+	);
+}
+
+void AAuraPlayerController::ClientMagicSelfCastRejected_Implementation()
+{
+	bWaitingForMagicCastResponse = false;
+
+	StopMagicDrawingMode();
+
+	if (UAuraMagicComponent* MagicComponent = GetMagicComponent())
+	{
+		MagicComponent->CancelMagic();
+	}
+
+	AuraMagicDebugPrint(
+		TEXT("WATER SELF-CAST FAILED: Check the server log."),
+		FColor::Red,
+		5.f
+	);
+}
 
 void AAuraPlayerController::CursorTrace()
 {

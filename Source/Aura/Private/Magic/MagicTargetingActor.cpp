@@ -146,7 +146,7 @@ bool AAuraMagicTargetingActor::HasValidTarget() const
     return bHasTarget && bTargetValid;
 }
 
-FVector AAuraMagicTargetingActor::GetTargetLocation() const
+FVector AAuraMagicTargetingActor::GetMagicTargetLocation() const
 {
     return CurrentTargetLocation;
 }

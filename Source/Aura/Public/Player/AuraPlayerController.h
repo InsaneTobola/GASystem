@@ -53,6 +53,14 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ClientMagicTargetRejected();
 	
+	UFUNCTION(Server, Reliable)
+	void ServerConfirmMagicSelfCast(FName PatternId, EMagicElement Element);
+
+	UFUNCTION(Client, Reliable)
+	void ClientMagicSelfCastAccepted();
+
+	UFUNCTION(Client, Reliable)
+	void ClientMagicSelfCastRejected();
 protected:
 	virtual void BeginPlay() override;
 	virtual void SetupInputComponent() override;

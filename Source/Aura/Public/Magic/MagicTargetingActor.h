@@ -23,7 +23,7 @@ public:
 
 	bool HasValidTarget() const;
 
-	FVector GetTargetLocation() const;
+	FVector GetMagicTargetLocation() const;
 
 protected:
 	virtual void BeginPlay() override;
