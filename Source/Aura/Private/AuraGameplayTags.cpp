@@ -348,5 +348,48 @@ FString("StartSearch")
 	FString("Knockback")
 		);
 	
+	
+	/*
+	 *  Mana, cooldown 
+	 */
+	GameplayTags.Data_ManaCost = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Data.ManaCost"),
+		FString("Mana cost magnitude")
+	);
+
+	GameplayTags.Data_Cooldown_Duration = UGameplayTagsManager::Get().AddNativeGameplayTag(
+			FName("Data.Cooldown.Duration"),
+			FString("Cooldown duration magnitude")
+		);
+
+	GameplayTags.Ability_Fail_Cost_Mana = UGameplayTagsManager::Get().AddNativeGameplayTag(
+			FName("Ability.Fail.Cost.Mana"),
+			FString("Not enough mana")
+		);
+
+	GameplayTags.Ability_Fail_Cooldown = UGameplayTagsManager::Get().AddNativeGameplayTag(
+			FName("Ability.Fail.Cooldown"),
+			FString("Ability is on cooldown")
+		);
+
+	GameplayTags.Ability_Fail_Configuration = UGameplayTagsManager::Get().AddNativeGameplayTag(
+			FName("Ability.Fail.Configuration"),
+			FString("Invalid ability configuration")
+		);
+
+	GameplayTags.Message_AbilityFail_Mana = UGameplayTagsManager::Get().AddNativeGameplayTag(
+			FName("Message.AbilityFail.Mana"),
+			FString("Not enough mana")
+		);
+
+	GameplayTags.Message_AbilityFail_Cooldown = UGameplayTagsManager::Get().AddNativeGameplayTag(
+			FName("Message.AbilityFail.Cooldown"),
+			FString("Ability is on cooldown")
+		);
+
+	GameplayTags.Message_AbilityFail_Generic = UGameplayTagsManager::Get().AddNativeGameplayTag(
+			FName("Message.AbilityFail.Generic"),
+			FString("Ability activation failed")
+		);
 }
 

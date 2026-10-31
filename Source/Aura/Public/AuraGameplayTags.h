@@ -49,8 +49,12 @@ public:
 	FGameplayTag Attributes_Resistance_Earth;
 	FGameplayTag Attributes_Resistance_Air;
 	
+	// Meta
 	FGameplayTag Attributes_Meta_IncomingXP;
+	TMap<FGameplayTag, FGameplayTag> DamageTypesToPrimaryAttributes;
+	TMap<FGameplayTag, FGameplayTag> DamageTypesToResistances;
 	
+	// Inputs
 	FGameplayTag InputTag_Q;
 	FGameplayTag InputTag_E;
 	FGameplayTag InputTag_R;
@@ -67,12 +71,7 @@ public:
 	FGameplayTag InputTag_S;
 	FGameplayTag InputTag_D;
 	
-	FGameplayTag Damage;
-	FGameplayTag HitReact;
-	
-	TMap<FGameplayTag, FGameplayTag> DamageTypesToPrimaryAttributes;
-	TMap<FGameplayTag, FGameplayTag> DamageTypesToResistances;
-	
+	// State Tree
 	FGameplayTag State_Idle;
 	FGameplayTag State_Rotate;
 	FGameplayTag State_StartChase;
@@ -85,6 +84,7 @@ public:
 	FGameplayTag State_Alert;
 	FGameplayTag State_StartSearch;
 	
+	// Event Combat
 	FGameplayTag Event_PlayerDetected;
 	FGameplayTag Event_PlayerLost;
 	FGameplayTag Event_AttackFinished;
@@ -93,13 +93,29 @@ public:
 	FGameplayTag Event_Knockback;
 	FGameplayTag Event_Knockup;
 	
+	FGameplayTag Damage;
+	FGameplayTag HitReact;
+	
+	// Status Combat
 	FGameplayTag Status_Stun;
 	FGameplayTag Status_Slow;
 	FGameplayTag Status_Burn;
 	FGameplayTag Status_Frost;
 	FGameplayTag Status_Knockback;
 	
-	
+	// SetByCaller data
+	FGameplayTag Data_ManaCost;
+	FGameplayTag Data_Cooldown_Duration;
+
+	// Ability activation failures
+	FGameplayTag Ability_Fail_Cost_Mana;
+	FGameplayTag Ability_Fail_Cooldown;
+	FGameplayTag Ability_Fail_Configuration;
+
+	// UI messages
+	FGameplayTag Message_AbilityFail_Mana;
+	FGameplayTag Message_AbilityFail_Cooldown;
+	FGameplayTag Message_AbilityFail_Generic;
 	
 private:
 	static FAuraGameplayTags GameplayTags;

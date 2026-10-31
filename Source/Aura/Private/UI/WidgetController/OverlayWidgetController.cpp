@@ -3,8 +3,11 @@
 
 #include "UI/WidgetController/OverlayWidgetController.h"
 
+#include "AuraGameplayTags.h"
 #include "AbilitySystem/AuraAbilitySystemComponent.h"
 #include "AbilitySystem/AuraAttributeSet.h"
+#include "AbilitySystem/Abilities/AuraGameplayAbility.h"
+#include "GameplayEffect.h"
 #include "Data/LevelUpInfo.h"
 #include "Player/AuraPlayerState.h"
 
@@ -62,6 +65,15 @@ void UOverlayWidgetController::BindCallbacksToDependencies()
 		}	
 	);
 	
+	AbilitySystemComponent->AbilityFailedCallbacks.AddUObject(
+	this,
+	&UOverlayWidgetController::HandleAbilityFailed
+	);
+
+	AbilitySystemComponent->OnActiveGameplayEffectAddedDelegateToSelf.AddUObject(
+		this,
+		&UOverlayWidgetController::HandleActiveEffectAdded
+	);
 	
 	Cast<UAuraAbilitySystemComponent>(AbilitySystemComponent)->EffectAssetTags.AddLambda(
 	[this](const FGameplayTagContainer& AssetTags)
@@ -110,6 +122,139 @@ void UOverlayWidgetController::OnXPChanged(int32 NewXP) const
 	}
 }
 
+void UOverlayWidgetController::HandleActiveEffectAdded(
+    UAbilitySystemComponent* ASC,
+    const FGameplayEffectSpec& Spec,
+    FActiveGameplayEffectHandle Handle
+)
+{
+    const FGameplayTag CooldownRoot =
+        FGameplayTag::RequestGameplayTag(
+            FName("Cooldown.Magic")
+        );
 
+    for (const FGameplayTag& GrantedTag : Spec.DynamicGrantedTags)
+    {
+        if (GrantedTag.MatchesTag(CooldownRoot))
+        {
+            RegisterCooldownTag(GrantedTag);
+        }
+    }
+}
 
+void UOverlayWidgetController::RegisterCooldownTag(const FGameplayTag& CooldownTag)
+{
+    if (!CooldownTag.IsValid() || RegisteredCooldownTags.HasTagExact(CooldownTag))
+    {
+        return;
+    }
+
+    RegisteredCooldownTags.AddTag(CooldownTag);
+
+    AbilitySystemComponent->RegisterAndCallGameplayTagEvent(CooldownTag,FOnGameplayEffectTagCountChanged::FDelegate::CreateUObject(
+    	this,
+            &UOverlayWidgetController::HandleCooldownTagChanged
+        ),
+        EGameplayTagEventType::NewOrRemoved
+    );
+}
+
+void UOverlayWidgetController::GetCooldownTimes(FGameplayTag CooldownTag,float& OutRemaining,float& OutDuration) const
+{
+    OutRemaining = 0.f;
+    OutDuration = 0.f;
+
+    if (!IsValid(AbilitySystemComponent) || !CooldownTag.IsValid())
+    {
+        return;
+    }
+
+    FGameplayTagContainer QueryTags;
+    QueryTags.AddTag(CooldownTag);
+
+    const FGameplayEffectQuery Query = FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(QueryTags);
+    const TArray<float> RemainingValues = AbilitySystemComponent->GetActiveEffectsTimeRemaining(Query);
+    const TArray<float> DurationValues = AbilitySystemComponent->GetActiveEffectsDuration(Query);
+
+    if (!RemainingValues.IsEmpty())
+    {
+        OutRemaining = RemainingValues[0];
+    }
+
+    if (!DurationValues.IsEmpty())
+    {
+        OutDuration = DurationValues[0];
+    }
+}
+
+void UOverlayWidgetController::ClientMagicAbilityFailed_Implementation(FGameplayTag MessageTag)
+{
+	if (!MessageTag.IsValid())
+	{
+		MessageTag =
+			FAuraGameplayTags::Get().Message_AbilityFail_Generic;
+	}
+
+	if (UAuraAbilitySystemComponent* ASC = Cast<UAuraAbilitySystemComponent>(AbilitySystemComponent))
+	{
+		FGameplayTagContainer Tags;
+		Tags.AddTag(MessageTag);
+		 
+		ASC->EffectAssetTags.Broadcast(Tags);
+	}
+}
+
+void UOverlayWidgetController::HandleCooldownTagChanged(const FGameplayTag CallbackTag,int32 NewCount)
+{
+    float Remaining = 0.f;
+    float Duration = 0.f;
+
+    if (NewCount > 0)
+    {
+        GetCooldownTimes(CallbackTag, Remaining, Duration);
+    }
+
+    OnAbilityCooldownChanged.Broadcast(CallbackTag,NewCount > 0,Duration,Remaining);
+}
+
+void UOverlayWidgetController::HandleAbilityFailed(const UGameplayAbility* FailedAbility,const FGameplayTagContainer& FailureTags)
+{
+	const FAuraGameplayTags& Tags = FAuraGameplayTags::Get();
+
+	FGameplayTag MessageTag;
+
+	if (FailureTags.HasTagExact(Tags.Ability_Fail_Cost_Mana))
+	{
+		MessageTag = Tags.Message_AbilityFail_Mana;
+	}
+	else if (FailureTags.HasTagExact(Tags.Ability_Fail_Cooldown))
+	{
+		MessageTag = Tags.Message_AbilityFail_Cooldown;
+	}
+	else if (FailureTags.HasTagExact(Tags.Ability_Fail_Configuration))
+	{
+		MessageTag = Tags.Message_AbilityFail_Generic;
+	}
+
+	if (!MessageTag.IsValid())
+	{
+		return;
+	}
+
+	const FUIWidgetRow* Row = GetDataTableRowByTag<FUIWidgetRow>(MessageWidgetDataTable,MessageTag);
+
+	if (Row)
+	{
+		MessageWidgetRowDelegate.Broadcast(*Row);
+	}
+	else
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("Missing UI message row for tag %s"),
+			*MessageTag.ToString()
+		);
+	}
+}
 
