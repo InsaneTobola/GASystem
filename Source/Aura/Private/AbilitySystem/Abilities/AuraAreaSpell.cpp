@@ -93,15 +93,7 @@ void UAuraAreaSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
     
     Super::ActivateAbility(Handle,ActorInfo,ActivationInfo,TriggerEventData);
 
-    if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
-    {
-        AuraMagicDebugPrint(
-        TEXT("AREA SPELL FAILED: CommitAbility failed (cost, cooldown or activation rules)."),FColor::Red);
-        RejectMagicCast(ActorInfo);
-        EndAbility(Handle,ActorInfo,ActivationInfo,true,true);
-        return;
-    }
-
+    
     AActor* Avatar = GetAvatarActorFromActorInfo();
     AAuraCharacter* Character = Cast<AAuraCharacter>(Avatar);
     UAbilitySystemComponent* SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Avatar);
@@ -124,6 +116,7 @@ void UAuraAreaSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
       FColor::Red,
       6.f
   );
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
@@ -185,7 +178,7 @@ void UAuraAreaSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
                 TEXT("AREA SPELL FAILED: Pattern %s requires damage ""type %s, but it is not configured in DamageTypes."),*Pattern->PatternId.ToString(),*ExpectedDamageTag.ToString()),
             FColor::Red,6.f
         );
-
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle,ActorInfo,ActivationInfo,true,true);
         return;
     }
@@ -196,7 +189,16 @@ void UAuraAreaSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
-
+    
+    if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+    {
+        AuraMagicDebugPrint(
+        TEXT("AREA SPELL FAILED: CommitAbility failed (cost, cooldown or activation rules)."),FColor::Red);
+        RejectMagicCast(ActorInfo);
+        EndAbility(Handle,ActorInfo,ActivationInfo,true,true);
+        return;
+    }
+    
     const int32 AbilityLevel = GetAbilityLevel();
     TMap<FGameplayTag, float> ScaledDamageValues;
 

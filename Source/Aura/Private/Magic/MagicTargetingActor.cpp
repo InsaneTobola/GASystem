@@ -89,7 +89,7 @@ void AAuraMagicTargetingActor::Tick(float DeltaTime)
 
     FHitResult Hit;
 
-    bHasTarget =OwningPlayerController->GetHitResultUnderCursorByChannel(UEngineTypes::ConvertToTraceType(ECC_WorldStatic),false,Hit);
+    bHasTarget = OwningPlayerController->GetHitResultUnderCursorByChannel(UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel3),false,Hit);
 
     if (!bHasTarget)
     {
@@ -116,12 +116,8 @@ void AAuraMagicTargetingActor::Tick(float DeltaTime)
             Hit.Location.Y,
             Hit.Location.Z,
             static_cast<int32>(HitComponent->GetCollisionObjectType()),
-            static_cast<int32>(
-                HitComponent->GetCollisionResponseToChannel(ECC_WorldStatic)
-            ),
-            static_cast<int32>(
-                HitComponent->GetCollisionResponseToChannel(ECC_Visibility)
-            )
+            static_cast<int32>(HitComponent->GetCollisionResponseToChannel(ECC_WorldStatic)),
+            static_cast<int32>(HitComponent->GetCollisionResponseToChannel(ECC_Visibility))
         );
     }
     CurrentTargetLocation = Hit.Location;
@@ -135,7 +131,9 @@ void AAuraMagicTargetingActor::Tick(float DeltaTime)
 
     const float Distance2D = FVector::Dist2D(Caster->GetActorLocation(),CurrentTargetLocation);
 
-    bTargetValid = Distance2D <= MaxRangeCm;
+    const bool bWalkableSurface = Hit.ImpactNormal.Z >= 0.7f;
+
+    bTargetValid = bWalkableSurface && Distance2D <= MaxRangeCm;
 
     UpdateMaterials();
     UpdateRangeRing();

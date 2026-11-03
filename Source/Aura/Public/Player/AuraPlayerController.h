@@ -54,7 +54,7 @@ public:
 	void ClientMagicTargetRejected();
 	
 	UFUNCTION(Server, Reliable)
-	void ServerConfirmMagicSelfCast(FName PatternId, EMagicElement Element);
+	void ServerConfirmMagicSelfCast(FName PatternId, EMagicElement Element,  FMagicGesture Gesture);
 
 	UFUNCTION(Client, Reliable)
 	void ClientMagicSelfCastAccepted();
@@ -126,7 +126,7 @@ private:
 	TObjectPtr<AAuraMagicTargetingActor> MagicTargetingActor;
 
 	FName PendingMagicPatternId = NAME_None;
-
+	FMagicGesture PendingMagicGesture;
 	EMagicElement PendingMagicElement = EMagicElement::Fire;
 
 	bool bMagicTargetingMode = false;
@@ -134,8 +134,8 @@ private:
 	bool bWaitingForMagicCastResponse = false;
 
 	UFUNCTION(Server, Reliable)
-	void ServerConfirmMagicTarget(FName PatternId,EMagicElement Element,FVector TargetLocation);
+	void ServerConfirmMagicTarget(FName PatternId,EMagicElement Element,FVector TargetLocation, FMagicGesture Gesture);
 
-	
+	bool ValidateMagicGestureForPattern(const FMagicGesture& Gesture,const UMagicPatternDefinition* Pattern) const;
 	
 };

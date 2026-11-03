@@ -27,6 +27,8 @@
 #include "Magic/MagicPointCloudRecognizer.h"
 #include "Magic/MagicPatternDefinition.h"
 #include "Magic/MagicTargetingActor.h"
+#include "Magic/MagicGestureValidator.h"
+#include "Magic/MagicValidationSettings.h"
 
 #include "UI/Widget/DamageTextComponent.h"
 #include "UI/Widget/SUAuraMagicDrawingWidget.h"
@@ -161,7 +163,7 @@ void AAuraPlayerController::ConfirmMagicDrawingMode()
 		MagicComponent->CancelMagic();
 		return;
 	}
-
+	PendingMagicGesture = MagicComponent->GetCurrentGesture();
 	const UAuraSelfCastSpell* SelfCastDefaults = Cast<UAuraSelfCastSpell>(Pattern->SkillAbilityClass.GetDefaultObject());
 	
 	if (SelfCastDefaults)
@@ -187,10 +189,7 @@ void AAuraPlayerController::ConfirmMagicDrawingMode()
 		// Prevent another cast request before the server responds.
 		bWaitingForMagicCastResponse = true;
 
-		ServerConfirmMagicSelfCast(
-			Pattern->PatternId,
-			Pattern->Element
-		);
+		ServerConfirmMagicSelfCast(Pattern->PatternId,Pattern->Element,PendingMagicGesture);
 
 		return;
 	}
@@ -304,6 +303,7 @@ void AAuraPlayerController::CancelMagicTargeting()
 	InputModeData.SetHideCursorDuringCapture(false);
 
 	SetInputMode(InputModeData);
+	PendingMagicGesture.Reset();
 }
 
 void AAuraPlayerController::ConfirmMagicTargeting()
@@ -319,7 +319,7 @@ void AAuraPlayerController::ConfirmMagicTargeting()
 	}
 	bWaitingForMagicCastResponse = true;
 
-	ServerConfirmMagicTarget(PendingMagicPatternId,PendingMagicElement,MagicTargetingActor->GetMagicTargetLocation());
+	ServerConfirmMagicTarget(PendingMagicPatternId,PendingMagicElement,MagicTargetingActor->GetMagicTargetLocation(),  PendingMagicGesture);
 }
 
 UAuraMagicComponent* AAuraPlayerController::GetMagicComponent() const
@@ -332,6 +332,60 @@ UAuraMagicComponent* AAuraPlayerController::GetMagicComponent() const
 	}
 
 	return AuraCharacter->MagicComponent;
+}
+
+bool AAuraPlayerController::ValidateMagicGestureForPattern(const FMagicGesture& Gesture,const UMagicPatternDefinition* Pattern) const
+{
+	if (!IsValid(Pattern))
+	{
+		return false;
+	}
+
+	const UMagicValidationSettings* Settings = GetDefault<UMagicValidationSettings>();
+
+	if (!Settings)
+	{
+		return false;
+	}
+	
+	for (const FMagicStroke& Stroke : Gesture.Strokes)
+	{
+		for (const FVector2D& Point : Stroke.Points)
+		{
+			if (!FMath::IsFinite(Point.X) ||
+				!FMath::IsFinite(Point.Y) ||
+				Point.X < 0.f || Point.X > 1.f ||
+				Point.Y < 0.f || Point.Y > 1.f)
+			{
+				return false;
+			}
+		}
+	}
+	
+	const FMagicValidationResult Validation = FMagicGestureValidator::Validate(Gesture, *Settings);
+
+	if (!Validation.bIsValid)
+	{
+		return false;
+	}
+	
+	if (!FMagicGestureValidator::ValidateAgainstPatternRules(Gesture,Pattern->ValidationRules))
+	{
+		return false;
+	}
+	
+	TArray<FMagicPointCloudTemplate> RuntimeTemplates;
+	Pattern->BuildRuntimeTemplates(RuntimeTemplates);
+
+	if (RuntimeTemplates.Num() == 0)
+	{
+		return false;
+	}
+
+	// Run the same recognizer on the server.
+	const FMagicRecognitionResult Recognition = FMagicPointCloudRecognizer::Recognize(Gesture,RuntimeTemplates,Pattern->MinimumSimilarityScore);
+
+	return Recognition.bMatchFound && Recognition.PatternId == Pattern->PatternId;
 }
 
 void AAuraPlayerController::MagicInputPressed(FGameplayTag InputTag)
@@ -396,7 +450,7 @@ void AAuraPlayerController::ShowDamageNumber_Implementation(float DamageAmount, 
 	}
 }
 
-void AAuraPlayerController::ServerConfirmMagicSelfCast_Implementation(FName PatternId,EMagicElement Element)
+void AAuraPlayerController::ServerConfirmMagicSelfCast_Implementation(FName PatternId,EMagicElement Element,  FMagicGesture Gesture)
 {
 	const auto RejectCast = [this](const TCHAR* Reason)
 	{
@@ -433,6 +487,12 @@ void AAuraPlayerController::ServerConfirmMagicSelfCast_Implementation(FName Patt
 		RejectCast(TEXT("Invalid pattern, element or ability class."));
 		return;
 	}
+	
+	if (!ValidateMagicGestureForPattern(Gesture, Pattern))
+	{
+		RejectCast(TEXT("Server gesture validation failed."));
+		return;
+	}
 
 	const UAuraSelfCastSpell* SelfCastDefaults = Cast<UAuraSelfCastSpell>(Pattern->SkillAbilityClass.GetDefaultObject());
 
@@ -458,7 +518,7 @@ void AAuraPlayerController::ServerConfirmMagicSelfCast_Implementation(FName Patt
 	// The ability reports final success or failure.
 }
 
-void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName PatternId, EMagicElement Element, FVector TargetLocation)
+void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName PatternId, EMagicElement Element, FVector TargetLocation, FMagicGesture Gesture)
 {
 	AuraMagicDebugPrint(
 	FString::Printf(
@@ -500,6 +560,14 @@ void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName Patter
         return;
     }
 
+	if (!ValidateMagicGestureForPattern(Gesture, Pattern))
+	{
+		AuraMagicDebugPrint(TEXT("SERVER REJECT: Gesture validation failed."),FColor::Red);
+
+		ClientMagicTargetRejected();
+		return;
+	}
+	
     const UAuraAreaSpell* SpellDefaults = Cast<UAuraAreaSpell>(Pattern->SkillAbilityClass.GetDefaultObject());
 
     if (!SpellDefaults || !ASC->FindAbilitySpecFromClass(Pattern->SkillAbilityClass))
@@ -516,13 +584,24 @@ void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName Patter
     const FVector TraceStart = TargetLocation + FVector(0.f, 0.f, 5000.f);
     const FVector TraceEnd = TargetLocation - FVector(0.f, 0.f, 5000.f);
 
-    if (!GetWorld()->LineTraceSingleByChannel(GroundHit,TraceStart,TraceEnd,ECC_WorldStatic,QueryParams))
+    if (!GetWorld()->LineTraceSingleByChannel(GroundHit,TraceStart,TraceEnd,ECC_GameTraceChannel3,QueryParams))
     {
     	AuraMagicDebugPrint(TEXT("SERVER REJECT: Ground trace failed."), FColor::Red);
         ClientMagicTargetRejected();
         return;
     }
+	
+	if (GroundHit.ImpactNormal.Z < 0.7f)
+	{
+		AuraMagicDebugPrint(
+			TEXT("SERVER REJECT: Target surface is too steep."),
+			FColor::Red
+		);
 
+		ClientMagicTargetRejected();
+		return;
+	}
+	
     const FVector ValidatedLocation = GroundHit.Location;
     const float Distance2D = FVector::Dist2D(AuraCharacter->GetActorLocation(),ValidatedLocation);
 
@@ -571,7 +650,6 @@ void AAuraPlayerController::ClientMagicTargetAccepted_Implementation()
 		MagicTargetingActor = nullptr;
 	}
 	
-	
 	bMagicTargetingMode = false;
 	bWaitingForMagicCastResponse = false;
 	PendingMagicPatternId = NAME_None;
@@ -580,6 +658,7 @@ void AAuraPlayerController::ClientMagicTargetAccepted_Implementation()
 	{
 		MagicComponent->CancelMagic();
 	}
+	PendingMagicGesture.Reset();
 }
 
 void AAuraPlayerController::ClientMagicTargetRejected_Implementation()
@@ -597,6 +676,8 @@ void AAuraPlayerController::ClientMagicTargetRejected_Implementation()
 		Warning,
 		TEXT("Magic target was rejected by the server.")
 	);
+	
+	PendingMagicGesture.Reset();
 }
 
 void AAuraPlayerController::ClientMagicSelfCastAccepted_Implementation()
@@ -615,6 +696,7 @@ void AAuraPlayerController::ClientMagicSelfCastAccepted_Implementation()
 		FColor::Green,
 		5.f
 	);
+	PendingMagicGesture.Reset();
 }
 
 void AAuraPlayerController::ClientMagicSelfCastRejected_Implementation()
@@ -633,6 +715,7 @@ void AAuraPlayerController::ClientMagicSelfCastRejected_Implementation()
 		FColor::Red,
 		5.f
 	);
+	PendingMagicGesture.Reset();
 }
 
 void AAuraPlayerController::CursorTrace()

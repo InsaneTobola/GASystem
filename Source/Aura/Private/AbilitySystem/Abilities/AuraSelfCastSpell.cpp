@@ -12,8 +12,7 @@ UAuraSelfCastSpell::UAuraSelfCastSpell()
     NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
 }
 
-void UAuraSelfCastSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle,const FGameplayAbilityActorInfo* ActorInfo,const FGameplayAbilityActivationInfo ActivationInfo,
-const FGameplayEventData* TriggerEventData)
+void UAuraSelfCastSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle,const FGameplayAbilityActorInfo* ActorInfo,const FGameplayAbilityActivationInfo ActivationInfo,const FGameplayEventData* TriggerEventData)
 {
     Super::ActivateAbility(Handle,ActorInfo,ActivationInfo,TriggerEventData);
 
@@ -55,9 +54,7 @@ const FGameplayEventData* TriggerEventData)
         );
 
         NotifyClientResult(false);
-
         EndAbility(Handle,ActorInfo,ActivationInfo,true,true);
-
         return;
     }
 
@@ -72,9 +69,7 @@ const FGameplayEventData* TriggerEventData)
         );
 
         NotifyClientResult(false);
-
         EndAbility(Handle,ActorInfo,ActivationInfo,true,true);
-
         return;
     }
 
@@ -84,7 +79,7 @@ const FGameplayEventData* TriggerEventData)
     ContextHandle.AddSourceObject(GetAvatarActorFromActorInfo());
 
     const FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(SelfGameplayEffectClass,GetAbilityLevel(),ContextHandle);
-
+    
     if (!SpecHandle.IsValid() || !SpecHandle.Data.IsValid())
     {
         UE_LOG(
@@ -94,14 +89,24 @@ const FGameplayEventData* TriggerEventData)
         );
 
         NotifyClientResult(false);
+        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+        return;
+    }
+    
+    if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("[MagicSelfCast] Failed to create GameplayEffectSpec.")
+        );
 
+        NotifyClientResult(false);
         EndAbility(Handle,ActorInfo,ActivationInfo,true,true);
-
         return;
     }
 
-    ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get()
-    );
+    ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 
     UE_LOG(
         LogTemp,
