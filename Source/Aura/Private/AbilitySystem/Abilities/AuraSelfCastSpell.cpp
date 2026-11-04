@@ -44,20 +44,7 @@ void UAuraSelfCastSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle
             PC->ClientMagicSelfCastRejected();
         }
     };
-
-    if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
-    {
-        UE_LOG(
-            LogTemp,
-            Warning,
-            TEXT("[MagicSelfCast] CommitAbility failed.")
-        );
-
-        NotifyClientResult(false);
-        EndAbility(Handle,ActorInfo,ActivationInfo,true,true);
-        return;
-    }
-
+    
     UAbilitySystemComponent* ASC = ActorInfo? ActorInfo->AbilitySystemComponent.Get(): nullptr;
 
     if (!IsValid(ASC) || !SelfGameplayEffectClass)
@@ -73,11 +60,42 @@ void UAuraSelfCastSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle
         return;
     }
 
+    if (!SelfGameplayEffectClass)
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("[MagicSelfCast] SelfGameplayEffectClass is not assigned.")
+        );
+
+        NotifyClientResult(false);
+        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+        return;
+    }
+
+    UGameplayEffect* EffectCDO =
+        SelfGameplayEffectClass->GetDefaultObject<UGameplayEffect>();
+
+    if (!IsValid(EffectCDO))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("[MagicSelfCast] Invalid GameplayEffect CDO. Class: %s"),
+            *GetNameSafe(SelfGameplayEffectClass.Get())
+        );
+
+        NotifyClientResult(false);
+        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+        return;
+    }
+    
     FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
 
     ContextHandle.SetAbility(this);
     ContextHandle.AddSourceObject(GetAvatarActorFromActorInfo());
 
+    const int32 AbilityLevel =GetAbilityLevel(Handle, ActorInfo);
     const FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(SelfGameplayEffectClass,GetAbilityLevel(),ContextHandle);
     
     if (!SpecHandle.IsValid() || !SpecHandle.Data.IsValid())
@@ -85,7 +103,11 @@ void UAuraSelfCastSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle
         UE_LOG(
             LogTemp,
             Error,
-            TEXT("[MagicSelfCast] Failed to create GameplayEffectSpec.")
+            TEXT("[MagicSelfCast] MakeOutgoingSpec failed. "
+                 "Effect=%s | CDO=%s | ASC=%s"),
+            *GetNameSafe(SelfGameplayEffectClass.Get()),
+            *GetNameSafe(EffectCDO),
+            *GetNameSafe(ASC)
         );
 
         NotifyClientResult(false);

@@ -1,17 +1,24 @@
 #include "Magic/MagicTargetingActor.h"
+#include "Magic/VolcanicArcsGeometry.h"
 
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Engine/EngineTypes.h"
+
 #include "CollisionQueryParams.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SplineMeshComponent.h"
+
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Character.h"
+
 #include "UObject/ConstructorHelpers.h"
 
 AAuraMagicTargetingActor::AAuraMagicTargetingActor()
@@ -61,6 +68,11 @@ void AAuraMagicTargetingActor::BeginPlay()
         RangeMesh->SetMaterial(0, DynamicRangeMaterial);
     }
 
+    if (ArcPreviewMaterial)
+    {
+        DynamicArcPreviewMaterial = UMaterialInstanceDynamic::Create(ArcPreviewMaterial, this);
+    }
+    
     AreaMesh->SetVisibility(false);
 }
 
@@ -95,10 +107,17 @@ void AAuraMagicTargetingActor::Tick(float DeltaTime)
     {
         AreaMesh->SetVisibility(false);
         bTargetValid = false;
+
+        if (bVolcanicArcsMode)
+        {
+            HideArcPreview();
+        }
+
         UpdateMaterials();
         UpdateRangeRing();
         return;
     }
+    
     if (const UPrimitiveComponent* HitComponent = Hit.GetComponent())
     {
         UE_LOG(
@@ -121,6 +140,58 @@ void AAuraMagicTargetingActor::Tick(float DeltaTime)
         );
     }
     CurrentTargetLocation = Hit.Location;
+    
+    if (bVolcanicArcsMode)
+    {
+        // The cursor target is the intersection point of both arcs.
+        const FVector ToTarget = (CurrentTargetLocation - Caster->GetActorLocation()).GetSafeNormal2D();
+        const FVector FacingDirection =ToTarget.IsNearlyZero()? Caster->GetActorForwardVector(): ToTarget;
+
+        // Keep local arc geometry centered at the cursor.
+        SetActorLocationAndRotation(CurrentTargetLocation + FVector(0.f, 0.f, 3.f),            FRotator(0.f, FacingDirection.Rotation().Yaw, 0.f));
+
+        const float Distance2D = FVector::Dist2D(Caster->GetActorLocation(),CurrentTargetLocation);
+        const bool bPreviousTargetValid = bTargetValid;
+        bTargetValid = Distance2D <= MaxRangeCm &&Hit.ImpactNormal.Z >= 0.7f;
+        const float NewArcLengthScale = FVolcanicArcsGeometry::CalculateLengthScale(Distance2D,MaxRangeCm,MinArcLengthScale,MaxArcLengthScale);
+        const bool bLengthChanged =! FMath::IsNearlyEqual(ArcLengthScale,NewArcLengthScale,0.001f);
+
+        ArcLengthScale = NewArcLengthScale;
+
+        if (bLengthChanged || bPreviousTargetValid != bTargetValid)
+        {
+            UpdateArcPreview();
+        }
+
+        AreaMesh->SetVisibility(false);
+
+        UpdateRangeRing();
+
+        return;
+    }
+    
+    if (bVolcanicArcsMode)
+    {
+        const FVector Forward = (CurrentTargetLocation - Caster->GetActorLocation()).GetSafeNormal2D();
+
+        SetActorLocation(CurrentTargetLocation + FVector(0.f, 0.f, 3.f));
+
+        SetActorRotation(FRotator(0.f, Forward.Rotation().Yaw, 0.f));
+
+        const float Distance2D = FVector::Dist2D(Caster->GetActorLocation(),CurrentTargetLocation);
+
+        bTargetValid = Distance2D <= MaxRangeCm && Hit.ImpactNormal.Z >= 0.7f;
+
+        AreaMesh->SetVisibility(false);
+
+        UpdateArcPreview();
+        UpdateRangeRing();
+
+        return;
+    }
+    
+    HideArcPreview();
+    
     AreaMesh->SetVisibility(true);
     AreaMesh->SetWorldLocation(Hit.Location + Hit.Normal * 3.f);
 
@@ -226,3 +297,164 @@ void AAuraMagicTargetingActor::UpdateRangeRing()
         DynamicRangeMaterial->SetVectorParameterValue(FName("Tint"),FLinearColor(1.f, 1.f, 1.f, 1.f));
     }
 }
+
+void AAuraMagicTargetingActor::InitializeVolcanicArcsTargeting(APlayerController* InPlayerController,AActor* InCaster,
+    float InMaxRangeCm,
+    float InBaseHalfLengthCm,
+    float InDefaultScale,
+    float InMinScale,
+    float InMaxScale)
+{
+    OwningPlayerController = InPlayerController;
+    Caster = InCaster;
+
+    MaxRangeCm = FMath::Max(InMaxRangeCm, 1.f);
+
+    ArcHalfLengthCm = FMath::Max(InBaseHalfLengthCm, 1.f);
+
+    MinArcLengthScale = InMinScale;
+    MaxArcLengthScale = InMaxScale;
+
+    ArcLengthScale = FMath::Clamp(InDefaultScale,MinArcLengthScale,MaxArcLengthScale);
+
+    bVolcanicArcsMode = true;
+
+    AreaMesh->SetVisibility(false);
+
+    UpdateRangeRing();
+
+    EnsureArcPreviewComponents();
+    UpdateArcPreview();
+}
+
+void AAuraMagicTargetingActor::EnsureArcPreviewComponents()
+{
+    if (!ArcSegmentMesh)
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("Volcanic Arcs: ArcSegmentMesh is not assigned.")
+        );
+
+        return;
+    }
+
+    const int32 RequiredSegments = FVolcanicArcsGeometry::SamplesPerArc * 2;
+
+    if (ArcPreviewSegments.Num() == RequiredSegments)
+    {
+        return;
+    }
+
+    HideArcPreview();
+
+    for (USplineMeshComponent* Component : ArcPreviewSegments)
+    {
+        if (IsValid(Component))
+        {
+            Component->DestroyComponent();
+        }
+    }
+
+    ArcPreviewSegments.Reset();
+
+    for (int32 Index = 0; Index < RequiredSegments; ++Index)
+    {
+        USplineMeshComponent* Segment = NewObject<USplineMeshComponent>(this);
+
+        if (!IsValid(Segment))
+        {
+            continue;
+        }
+
+        Segment->SetupAttachment(SceneRoot);
+        Segment->SetStaticMesh(ArcSegmentMesh);
+        Segment->SetForwardAxis(ESplineMeshAxis::X);
+        Segment->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Segment->SetCastShadow(false);
+        Segment->SetStartScale(FVector2D(1.f, 1.f));
+        Segment->SetEndScale(FVector2D(1.f, 1.f));
+
+        if (DynamicArcPreviewMaterial)
+        {
+            Segment->SetMaterial(0, DynamicArcPreviewMaterial);
+        }
+
+        AddInstanceComponent(Segment);
+        Segment->RegisterComponent();
+
+        ArcPreviewSegments.Add(Segment);
+    }
+}
+
+void AAuraMagicTargetingActor::UpdateArcPreview()
+{
+    if (!bVolcanicArcsMode || !ArcSegmentMesh)
+    {
+        return;
+    }
+
+    EnsureArcPreviewComponents();
+
+    TArray<FVector> ArcA;
+    TArray<FVector> ArcB;
+
+    FVolcanicArcsGeometry::Build(ArcHalfLengthCm,ArcLengthScale,ArcA,ArcB);
+
+    int32 SegmentIndex = 0;
+
+    auto UpdatePath = [&](const TArray<FVector>& Path)
+    {
+        for (int32 Index = 0; Index < Path.Num() - 1; ++Index)
+        {
+            if (!ArcPreviewSegments.IsValidIndex(SegmentIndex))
+            {
+                return;
+            }
+
+            USplineMeshComponent* Segment = ArcPreviewSegments[SegmentIndex++];
+
+            if (!IsValid(Segment))
+            {
+                continue;
+            }
+
+            const FVector Start = Path[Index];
+            const FVector End = Path[Index + 1];
+            const FVector StartTangent = Index == 0? End - Start: (Path[Index + 1] - Path[Index - 1]) * 0.5f;
+            const FVector EndTangent = Index + 2 >= Path.Num()? End - Start: (Path[Index + 2] - Path[Index]) * 0.5f;
+
+            Segment->SetStartScale(FVector2D(1.f, 1.f));
+            Segment->SetEndScale(FVector2D(1.f, 1.f));
+            Segment->SetStartAndEnd(Start,StartTangent,End,EndTangent,true);
+            Segment->SetVisibility(bHasTarget);
+        }
+    };
+
+    SegmentIndex = 0;
+
+    UpdatePath(ArcA);
+    UpdatePath(ArcB);
+
+    if (DynamicArcPreviewMaterial)
+    {
+        const FLinearColor Color = bTargetValid
+            ? FLinearColor(1.f, 0.12f, 0.02f, 1.f)
+            : FLinearColor(1.f, 0.f, 0.f, 1.f);
+
+        DynamicArcPreviewMaterial->SetVectorParameterValue(FName("Tint"),Color);
+    }
+}
+
+void AAuraMagicTargetingActor::HideArcPreview()
+{
+    for (USplineMeshComponent* Segment : ArcPreviewSegments)
+    {
+        if (IsValid(Segment))
+        {
+            Segment->SetVisibility(false);
+        }
+    }
+}
+

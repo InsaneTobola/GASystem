@@ -5,9 +5,12 @@
 #include "MagicTargetingActor.generated.h"
 
 class APlayerController;
+class UStaticMesh;
 class UStaticMeshComponent;
+class USplineMeshComponent;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
+
 
 UCLASS()
 class AURA_API AAuraMagicTargetingActor : public AActor
@@ -25,6 +28,8 @@ public:
 
 	FVector GetMagicTargetLocation() const;
 
+	void InitializeVolcanicArcsTargeting(APlayerController* InPlayerController,AActor* InCaster,float InMaxRangeCm,float InBaseHalfLengthCm,float InDefaultScale,float InMinScale,float InMaxScale);
+	
 protected:
 	virtual void BeginPlay() override;
 
@@ -66,4 +71,32 @@ private:
 
 	void UpdateMaterials();
 	void UpdateRangeRing();
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Magic|Volcanic Arcs")
+	TObjectPtr<UStaticMesh> ArcSegmentMesh;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Magic|Volcanic Arcs")
+	TObjectPtr<UMaterialInterface> ArcPreviewMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> DynamicArcPreviewMaterial;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<USplineMeshComponent>> ArcPreviewSegments;
+
+	bool bVolcanicArcsMode = false;
+
+	float ArcHalfLengthCm = 250.f;
+
+	float ArcLengthScale = 1.f;
+
+	float MinArcLengthScale = 0.7f;
+
+	float MaxArcLengthScale = 1.4f;
+
+	void EnsureArcPreviewComponents();
+
+	void UpdateArcPreview();
+
+	void HideArcPreview();
 };

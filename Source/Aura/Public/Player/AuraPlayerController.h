@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GameplayTagContainer.h"
 #include "Magic/MagicTypes.h"
+#include "Magic/MagicGestureNetData.h"
 #include "AuraPlayerController.generated.h"
 
 class UInputMappingContext;
@@ -54,7 +55,7 @@ public:
 	void ClientMagicTargetRejected();
 	
 	UFUNCTION(Server, Reliable)
-	void ServerConfirmMagicSelfCast(FName PatternId, EMagicElement Element,  FMagicGesture Gesture);
+	void ServerConfirmMagicSelfCast(FName PatternId, EMagicElement Element, FMagicGestureNetData GestureData);
 
 	UFUNCTION(Client, Reliable)
 	void ClientMagicSelfCastAccepted();
@@ -126,7 +127,7 @@ private:
 	TObjectPtr<AAuraMagicTargetingActor> MagicTargetingActor;
 
 	FName PendingMagicPatternId = NAME_None;
-	FMagicGesture PendingMagicGesture;
+	FMagicGestureNetData PendingMagicGestureNetData;
 	EMagicElement PendingMagicElement = EMagicElement::Fire;
 
 	bool bMagicTargetingMode = false;
@@ -134,8 +135,9 @@ private:
 	bool bWaitingForMagicCastResponse = false;
 
 	UFUNCTION(Server, Reliable)
-	void ServerConfirmMagicTarget(FName PatternId,EMagicElement Element,FVector TargetLocation, FMagicGesture Gesture);
+	void ServerConfirmMagicTarget(FName PatternId,EMagicElement Element,FVector TargetLocation, FMagicGestureNetData GestureData);
 
 	bool ValidateMagicGestureForPattern(const FMagicGesture& Gesture,const UMagicPatternDefinition* Pattern) const;
+	
 	
 };

@@ -56,8 +56,8 @@ public:
 	bool BeginTargeting(UMagicPatternDefinition* Pattern);
 	UMagicPatternDefinition* GetSelectedPattern() const;
 	bool IsTargeting() const;
-	void SetPendingCast(FName PatternId, const FVector& TargetLocation);
-	bool ConsumePendingCast(FName& OutPatternId,FVector& OutTargetLocation);
+	void SetPendingCast(FName PatternId, const FVector& TargetLocation, float InArcLengthScale = 1.f);
+	bool ConsumePendingCast(FName& OutPatternId,FVector& OutTargetLocation, float* OutArcLengthScale = nullptr);
 	void ClearPendingCast();
 	
 private:
@@ -94,5 +94,5 @@ private:
 	FVector PendingTargetLocation = FVector::ZeroVector;
 
 	bool bHasPendingCast = false;
-	
+	float PendingArcLengthScale = 1.f;
 };

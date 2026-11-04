@@ -318,14 +318,16 @@ bool UAuraMagicComponent::IsTargeting() const
 	return MagicState == EMagicState::Targeting;
 }
 
-void UAuraMagicComponent::SetPendingCast(FName PatternId, const FVector& TargetLocation)
+void UAuraMagicComponent::SetPendingCast(FName PatternId, const FVector& TargetLocation, float InArcLengthScale)
 {
 	PendingPatternId = PatternId;
 	PendingTargetLocation = TargetLocation;
+	PendingArcLengthScale = InArcLengthScale;
+	
 	bHasPendingCast = true;
 }
 
-bool UAuraMagicComponent::ConsumePendingCast(FName& OutPatternId, FVector& OutTargetLocation)
+bool UAuraMagicComponent::ConsumePendingCast(FName& OutPatternId, FVector& OutTargetLocation, float* OutArcLengthScale)
 {
 	if (!bHasPendingCast || PendingPatternId.IsNone())
 	{
@@ -335,6 +337,12 @@ bool UAuraMagicComponent::ConsumePendingCast(FName& OutPatternId, FVector& OutTa
 	OutPatternId = PendingPatternId;
 	OutTargetLocation = PendingTargetLocation;
 
+	if (OutArcLengthScale)
+	{
+		*OutArcLengthScale = PendingArcLengthScale;
+	}
+
+	
 	ClearPendingCast();
 
 	return true;
@@ -345,6 +353,8 @@ void UAuraMagicComponent::ClearPendingCast()
 	PendingPatternId = NAME_None;
 	PendingTargetLocation = FVector::ZeroVector;
 	bHasPendingCast = false;
+	
+	PendingArcLengthScale = 1.f;
 }
 
 bool UAuraMagicComponent::AddStrokePoint(const FVector2D& NormalizedPoint)

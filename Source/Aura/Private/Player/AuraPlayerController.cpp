@@ -5,6 +5,7 @@
 #include "AbilitySystem/AuraAbilitySystemComponent.h"
 #include "AbilitySystem/Abilities/AuraAreaSpell.h"
 #include "AbilitySystem/Abilities/AuraSelfCastSpell.h"
+#include "AbilitySystem/Abilities/AuraVolcanicArcsSpell.h"
 #include "AbilitySystem/AuraAttributeSet.h"
 #include "AuraGameplayTags.h"
 
@@ -29,6 +30,7 @@
 #include "Magic/MagicTargetingActor.h"
 #include "Magic/MagicGestureValidator.h"
 #include "Magic/MagicValidationSettings.h"
+#include "Magic/VolcanicArcsGeometry.h"
 
 #include "UI/Widget/DamageTextComponent.h"
 #include "UI/Widget/SUAuraMagicDrawingWidget.h"
@@ -163,7 +165,32 @@ void AAuraPlayerController::ConfirmMagicDrawingMode()
 		MagicComponent->CancelMagic();
 		return;
 	}
-	PendingMagicGesture = MagicComponent->GetCurrentGesture();
+	
+	PendingMagicGestureNetData.Reset();
+
+	const UMagicValidationSettings* Settings =
+		GetDefault<UMagicValidationSettings>();
+
+	if (!Settings ||
+		!PendingMagicGestureNetData.Encode(
+			MagicComponent->GetLastValidatedGesture(),
+			*Settings
+		))
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("Failed to encode validated magic gesture.")
+		);
+
+		StopMagicDrawingMode();
+		MagicComponent->CancelMagic();
+
+		PendingMagicGestureNetData.Reset();
+
+		return;
+	}
+	
 	const UAuraSelfCastSpell* SelfCastDefaults = Cast<UAuraSelfCastSpell>(Pattern->SkillAbilityClass.GetDefaultObject());
 	
 	if (SelfCastDefaults)
@@ -189,7 +216,7 @@ void AAuraPlayerController::ConfirmMagicDrawingMode()
 		// Prevent another cast request before the server responds.
 		bWaitingForMagicCastResponse = true;
 
-		ServerConfirmMagicSelfCast(Pattern->PatternId,Pattern->Element,PendingMagicGesture);
+		ServerConfirmMagicSelfCast(Pattern->PatternId,Pattern->Element, PendingMagicGestureNetData);
 
 		return;
 	}
@@ -258,8 +285,6 @@ void AAuraPlayerController::StartMagicTargeting(UMagicPatternDefinition* Pattern
 		return;
 	}
 
-	MagicTargetingActor->InitializeTargeting(this,GetPawn(),SpellDefaults->GetMaxRangeCm(),SpellDefaults->CalculateAreaRadius(ASC));
-
 	PendingMagicPatternId = Pattern->PatternId;
 	PendingMagicElement = Pattern->Element;
 
@@ -272,6 +297,30 @@ void AAuraPlayerController::StartMagicTargeting(UMagicPatternDefinition* Pattern
 	InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	InputModeData.SetHideCursorDuringCapture(false);
 
+	if (const UAuraVolcanicArcsSpell* VolcanicDefaults = Cast<UAuraVolcanicArcsSpell>(Pattern->SkillAbilityClass.GetDefaultObject()))
+	{
+		MagicTargetingActor->InitializeVolcanicArcsTargeting(
+			this,
+			GetPawn(),
+			VolcanicDefaults->GetMaxRangeCm(),
+			VolcanicDefaults->GetBaseHalfLengthCm(),
+			VolcanicDefaults->GetDefaultArcLengthScale(),
+			VolcanicDefaults->GetMinArcLengthScale(),
+			VolcanicDefaults->GetMaxArcLengthScale());
+	}
+	else
+	{
+		
+
+		if (!SpellDefaults)
+		{
+			CancelMagicTargeting();
+			return;
+		}
+
+		MagicTargetingActor->InitializeTargeting(this,GetPawn(),SpellDefaults->GetMaxRangeCm(),SpellDefaults->CalculateAreaRadius(ASC));
+	}
+	
 	SetInputMode(InputModeData);
 }
 
@@ -303,7 +352,7 @@ void AAuraPlayerController::CancelMagicTargeting()
 	InputModeData.SetHideCursorDuringCapture(false);
 
 	SetInputMode(InputModeData);
-	PendingMagicGesture.Reset();
+	PendingMagicGestureNetData.Reset();
 }
 
 void AAuraPlayerController::ConfirmMagicTargeting()
@@ -319,7 +368,7 @@ void AAuraPlayerController::ConfirmMagicTargeting()
 	}
 	bWaitingForMagicCastResponse = true;
 
-	ServerConfirmMagicTarget(PendingMagicPatternId,PendingMagicElement,MagicTargetingActor->GetMagicTargetLocation(),  PendingMagicGesture);
+	ServerConfirmMagicTarget(PendingMagicPatternId,PendingMagicElement,MagicTargetingActor->GetMagicTargetLocation(),PendingMagicGestureNetData);
 }
 
 UAuraMagicComponent* AAuraPlayerController::GetMagicComponent() const
@@ -450,7 +499,7 @@ void AAuraPlayerController::ShowDamageNumber_Implementation(float DamageAmount, 
 	}
 }
 
-void AAuraPlayerController::ServerConfirmMagicSelfCast_Implementation(FName PatternId,EMagicElement Element,  FMagicGesture Gesture)
+void AAuraPlayerController::ServerConfirmMagicSelfCast_Implementation(FName PatternId,EMagicElement Element, FMagicGestureNetData GestureData)
 {
 	const auto RejectCast = [this](const TCHAR* Reason)
 	{
@@ -488,7 +537,11 @@ void AAuraPlayerController::ServerConfirmMagicSelfCast_Implementation(FName Patt
 		return;
 	}
 	
-	if (!ValidateMagicGestureForPattern(Gesture, Pattern))
+	FMagicGesture ServerGesture;
+
+	const UMagicValidationSettings* Settings = GetDefault<UMagicValidationSettings>();
+
+	if (!Settings || !GestureData.Decode(ServerGesture, *Settings) || !ValidateMagicGestureForPattern(ServerGesture, Pattern))
 	{
 		RejectCast(TEXT("Server gesture validation failed."));
 		return;
@@ -518,7 +571,7 @@ void AAuraPlayerController::ServerConfirmMagicSelfCast_Implementation(FName Patt
 	// The ability reports final success or failure.
 }
 
-void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName PatternId, EMagicElement Element, FVector TargetLocation, FMagicGesture Gesture)
+void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName PatternId, EMagicElement Element, FVector TargetLocation, FMagicGestureNetData GestureData)
 {
 	AuraMagicDebugPrint(
 	FString::Printf(
@@ -559,12 +612,20 @@ void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName Patter
         ClientMagicTargetRejected();
         return;
     }
+	
+	FMagicGesture ServerGesture;
 
-	if (!ValidateMagicGestureForPattern(Gesture, Pattern))
+	const UMagicValidationSettings* Settings = GetDefault<UMagicValidationSettings>();
+
+	if (!Settings || !GestureData.Decode(ServerGesture, *Settings) || !ValidateMagicGestureForPattern(ServerGesture, Pattern))
 	{
-		AuraMagicDebugPrint(TEXT("SERVER REJECT: Gesture validation failed."),FColor::Red);
+		AuraMagicDebugPrint(
+			TEXT("SERVER REJECT: Gesture validation failed."),
+			FColor::Red
+		);
 
 		ClientMagicTargetRejected();
+
 		return;
 	}
 	
@@ -612,10 +673,14 @@ void AAuraPlayerController::ServerConfirmMagicTarget_Implementation(FName Patter
         return;
     }
 
-    AuraCharacter->MagicComponent->SetPendingCast(
-        PatternId,
-        ValidatedLocation
-    );
+	float AcceptedArcLengthScale = 1.f;
+
+	if (const UAuraVolcanicArcsSpell* ArcDefaults = Cast<UAuraVolcanicArcsSpell>(Pattern->SkillAbilityClass.GetDefaultObject()))
+	{
+		AcceptedArcLengthScale = FVolcanicArcsGeometry::CalculateLengthScale(Distance2D,ArcDefaults->GetMaxRangeCm(),ArcDefaults->GetMinArcLengthScale(),ArcDefaults->GetMaxArcLengthScale());
+	}
+	
+    AuraCharacter->MagicComponent->SetPendingCast(PatternId,ValidatedLocation,AcceptedArcLengthScale);
 
 	if (!ASC->TryActivateAbilityByClass(Pattern->SkillAbilityClass))
 	{
@@ -658,7 +723,7 @@ void AAuraPlayerController::ClientMagicTargetAccepted_Implementation()
 	{
 		MagicComponent->CancelMagic();
 	}
-	PendingMagicGesture.Reset();
+	PendingMagicGestureNetData.Reset();
 }
 
 void AAuraPlayerController::ClientMagicTargetRejected_Implementation()
@@ -676,8 +741,6 @@ void AAuraPlayerController::ClientMagicTargetRejected_Implementation()
 		Warning,
 		TEXT("Magic target was rejected by the server.")
 	);
-	
-	PendingMagicGesture.Reset();
 }
 
 void AAuraPlayerController::ClientMagicSelfCastAccepted_Implementation()
@@ -696,7 +759,7 @@ void AAuraPlayerController::ClientMagicSelfCastAccepted_Implementation()
 		FColor::Green,
 		5.f
 	);
-	PendingMagicGesture.Reset();
+	PendingMagicGestureNetData.Reset();
 }
 
 void AAuraPlayerController::ClientMagicSelfCastRejected_Implementation()
@@ -715,7 +778,7 @@ void AAuraPlayerController::ClientMagicSelfCastRejected_Implementation()
 		FColor::Red,
 		5.f
 	);
-	PendingMagicGesture.Reset();
+	PendingMagicGestureNetData.Reset();
 }
 
 void AAuraPlayerController::CursorTrace()
@@ -884,8 +947,8 @@ void AAuraPlayerController::SetupInputComponent()
 	UAuraInputComponent* AuraInputComponent = CastChecked<UAuraInputComponent>(InputComponent);
 	AuraInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AAuraPlayerController::Move);
 	AuraInputComponent->BindAbilityActions(InputConfig, this, &ThisClass::AbilityInputTagPressed, &ThisClass::AbilityInputTagReleased, &ThisClass::AbilityInputTagHeld);
-	AuraInputComponent->BindMagicActions(InputConfig,this,&ThisClass::MagicInputPressed
- );
+	AuraInputComponent->BindMagicActions(InputConfig,this,&ThisClass::MagicInputPressed);
+	
 }
 
 void AAuraPlayerController::Move(const FInputActionValue& InputActionValue)
