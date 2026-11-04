@@ -28,6 +28,8 @@ public:
     void InitializeField(
         float InBaseHalfLengthCm,
         float InArcLengthScale,
+        float InArcBowOffsetCm,
+        const FVector& InIntersectionLocal,
         float InArcCollisionRadiusCm,
         float InIntersectionRadiusCm,
         float InDurationSeconds,
@@ -56,6 +58,12 @@ private:
     UPROPERTY(ReplicatedUsing = OnRep_ArcSettings)
     float ArcLengthScale = 1.f;
 
+    UPROPERTY(ReplicatedUsing = OnRep_ArcSettings)
+    float ArcBowOffsetCm = 90.f;
+
+    UPROPERTY(ReplicatedUsing = OnRep_ArcSettings)
+    FVector IntersectionLocal = FVector::ZeroVector;
+    
     UPROPERTY(Transient)
     float ArcCollisionRadiusCm = 35.f;
 

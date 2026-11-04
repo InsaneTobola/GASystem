@@ -306,7 +306,8 @@ void AAuraPlayerController::StartMagicTargeting(UMagicPatternDefinition* Pattern
 			VolcanicDefaults->GetBaseHalfLengthCm(),
 			VolcanicDefaults->GetDefaultArcLengthScale(),
 			VolcanicDefaults->GetMinArcLengthScale(),
-			VolcanicDefaults->GetMaxArcLengthScale());
+			VolcanicDefaults->GetMaxArcLengthScale(),
+			VolcanicDefaults->GetArcBowOffsetCm());
 	}
 	else
 	{

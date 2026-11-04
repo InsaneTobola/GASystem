@@ -33,6 +33,11 @@ public:
 	{
 		return MaxArcLengthScale;
 	}
+	
+	float GetArcBowOffsetCm() const
+	{
+		return ArcBowOffsetCm;
+	}
 
 protected:
 
@@ -59,6 +64,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Volcanic Arcs")
 	float IntersectionRadiusCm = 65.f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Volcanic Arcs")
+	float ArcBowOffsetCm = 90.f;
 private:
 
 	void RejectVolcanicArcsCast(const FGameplayAbilityActorInfo* ActorInfo) const;

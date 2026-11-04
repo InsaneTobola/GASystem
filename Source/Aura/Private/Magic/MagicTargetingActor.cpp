@@ -111,6 +111,7 @@ void AAuraMagicTargetingActor::Tick(float DeltaTime)
         if (bVolcanicArcsMode)
         {
             HideArcPreview();
+            bHasBuiltArcPreview = false;
         }
 
         UpdateMaterials();
@@ -122,7 +123,7 @@ void AAuraMagicTargetingActor::Tick(float DeltaTime)
     {
         UE_LOG(
             LogTemp,
-            Warning,
+            VeryVerbose,
             TEXT(
                 "[MagicTargeting] Actor=%s | Component=%s | "
                 "Location=(%.1f, %.1f, %.1f) | "
@@ -143,51 +144,50 @@ void AAuraMagicTargetingActor::Tick(float DeltaTime)
     
     if (bVolcanicArcsMode)
     {
-        // The cursor target is the intersection point of both arcs.
-        const FVector ToTarget = (CurrentTargetLocation - Caster->GetActorLocation()).GetSafeNormal2D();
-        const FVector FacingDirection =ToTarget.IsNearlyZero()? Caster->GetActorForwardVector(): ToTarget;
+       const FVector CasterGroundLocation = GetCasterGroundLocation();
 
-        // Keep local arc geometry centered at the cursor.
-        SetActorLocationAndRotation(CurrentTargetLocation + FVector(0.f, 0.f, 3.f),            FRotator(0.f, FacingDirection.Rotation().Yaw, 0.f));
+    const FVector ToTarget = (CurrentTargetLocation - CasterGroundLocation).GetSafeNormal2D();
+    const FVector FacingDirection = ToTarget.IsNearlyZero()? Caster->GetActorForwardVector(): ToTarget;
 
-        const float Distance2D = FVector::Dist2D(Caster->GetActorLocation(),CurrentTargetLocation);
-        const bool bPreviousTargetValid = bTargetValid;
-        bTargetValid = Distance2D <= MaxRangeCm &&Hit.ImpactNormal.Z >= 0.7f;
-        const float NewArcLengthScale = FVolcanicArcsGeometry::CalculateLengthScale(Distance2D,MaxRangeCm,MinArcLengthScale,MaxArcLengthScale);
-        const bool bLengthChanged =! FMath::IsNearlyEqual(ArcLengthScale,NewArcLengthScale,0.001f);
+    // Preview actor stays at the caster.
+    // It only rotates toward the cursor.
+    SetActorLocationAndRotation(
+        CasterGroundLocation + FVector(0.f, 0.f, 3.f),
+        FRotator(
+            0.f,
+            FacingDirection.Rotation().Yaw,
+            0.f
+        )
+    );
 
-        ArcLengthScale = NewArcLengthScale;
-
-        if (bLengthChanged || bPreviousTargetValid != bTargetValid)
-        {
-            UpdateArcPreview();
-        }
-
-        AreaMesh->SetVisibility(false);
-
-        UpdateRangeRing();
-
-        return;
-    }
+    // Cursor target converted into preview actor local space.
+    const FVector TargetPoint = CurrentTargetLocation + FVector(0.f, 0.f, 3.f);
+   
+        CurrentIntersectionLocal = GetActorTransform().InverseTransformPosition(TargetPoint);
+    const float Distance2D = FVector::Dist2D(Caster->GetActorLocation(),CurrentTargetLocation);
+    const bool bPreviousTargetValid = bTargetValid;
     
-    if (bVolcanicArcsMode)
+        bTargetValid = Distance2D <= MaxRangeCm &&Hit.ImpactNormal.Z >= 0.7f;
+    const float NewArcLengthScale = FVolcanicArcsGeometry::CalculateLengthScale(Distance2D,MaxRangeCm,MinArcLengthScale,MaxArcLengthScale);
+    const bool bLengthChanged = !FMath::IsNearlyEqual(ArcLengthScale,NewArcLengthScale,0.001f);
+    const bool bIntersectionChanged = !bHasBuiltArcPreview || !CurrentIntersectionLocal.Equals(LastPreviewIntersectionLocal,1.f);
+
+    ArcLengthScale = NewArcLengthScale;
+
+    if (bLengthChanged || bIntersectionChanged || bPreviousTargetValid != bTargetValid)
     {
-        const FVector Forward = (CurrentTargetLocation - Caster->GetActorLocation()).GetSafeNormal2D();
-
-        SetActorLocation(CurrentTargetLocation + FVector(0.f, 0.f, 3.f));
-
-        SetActorRotation(FRotator(0.f, Forward.Rotation().Yaw, 0.f));
-
-        const float Distance2D = FVector::Dist2D(Caster->GetActorLocation(),CurrentTargetLocation);
-
-        bTargetValid = Distance2D <= MaxRangeCm && Hit.ImpactNormal.Z >= 0.7f;
-
-        AreaMesh->SetVisibility(false);
-
         UpdateArcPreview();
-        UpdateRangeRing();
 
-        return;
+        LastPreviewIntersectionLocal = CurrentIntersectionLocal;
+
+        bHasBuiltArcPreview = true;
+    }
+
+    AreaMesh->SetVisibility(false);
+
+    UpdateRangeRing();
+
+    return;
     }
     
     HideArcPreview();
@@ -303,7 +303,8 @@ void AAuraMagicTargetingActor::InitializeVolcanicArcsTargeting(APlayerController
     float InBaseHalfLengthCm,
     float InDefaultScale,
     float InMinScale,
-    float InMaxScale)
+    float InMaxScale,
+    float InArcBowOffsetCm)
 {
     OwningPlayerController = InPlayerController;
     Caster = InCaster;
@@ -316,7 +317,8 @@ void AAuraMagicTargetingActor::InitializeVolcanicArcsTargeting(APlayerController
     MaxArcLengthScale = InMaxScale;
 
     ArcLengthScale = FMath::Clamp(InDefaultScale,MinArcLengthScale,MaxArcLengthScale);
-
+    ArcBowOffsetCm = FMath::Max(InArcBowOffsetCm, 0.f);
+    
     bVolcanicArcsMode = true;
 
     AreaMesh->SetVisibility(false);
@@ -326,6 +328,28 @@ void AAuraMagicTargetingActor::InitializeVolcanicArcsTargeting(APlayerController
     EnsureArcPreviewComponents();
     UpdateArcPreview();
 }
+
+
+FVector AAuraMagicTargetingActor::GetCasterGroundLocation() const
+{
+    if (!IsValid(Caster))
+    {
+        return FVector::ZeroVector;
+    }
+
+    FVector GroundLocation = Caster->GetActorLocation();
+
+    if (const ACharacter* Character = Cast<ACharacter>(Caster))
+    {
+        if (const UCapsuleComponent* Capsule = Character->GetCapsuleComponent())
+        {
+            GroundLocation.Z -= Capsule->GetScaledCapsuleHalfHeight();
+        }
+    }
+
+    return GroundLocation;
+}
+
 
 void AAuraMagicTargetingActor::EnsureArcPreviewComponents()
 {
@@ -340,7 +364,7 @@ void AAuraMagicTargetingActor::EnsureArcPreviewComponents()
         return;
     }
 
-    const int32 RequiredSegments = FVolcanicArcsGeometry::SamplesPerArc * 2;
+    const int32 RequiredSegments = FVolcanicArcsGeometry::SamplesPerArc * 4;
 
     if (ArcPreviewSegments.Num() == RequiredSegments)
     {
@@ -368,6 +392,7 @@ void AAuraMagicTargetingActor::EnsureArcPreviewComponents()
             continue;
         }
 
+        Segment->SetMobility(EComponentMobility::Movable);
         Segment->SetupAttachment(SceneRoot);
         Segment->SetStaticMesh(ArcSegmentMesh);
         Segment->SetForwardAxis(ESplineMeshAxis::X);
@@ -400,7 +425,7 @@ void AAuraMagicTargetingActor::UpdateArcPreview()
     TArray<FVector> ArcA;
     TArray<FVector> ArcB;
 
-    FVolcanicArcsGeometry::Build(ArcHalfLengthCm,ArcLengthScale,ArcA,ArcB);
+    FVolcanicArcsGeometry::Build(CurrentIntersectionLocal,ArcHalfLengthCm,ArcLengthScale,ArcBowOffsetCm,ArcA,ArcB);
 
     int32 SegmentIndex = 0;
 

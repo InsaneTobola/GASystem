@@ -30,6 +30,8 @@ AAuraVolcanicArcsField::AAuraVolcanicArcsField()
 void AAuraVolcanicArcsField::InitializeField(
 	float InBaseHalfLengthCm,
 	float InArcLengthScale,
+	float InArcBowOffsetCm,
+	const FVector& InIntersectionLocal,
 	float InArcCollisionRadiusCm,
 	float InIntersectionRadiusCm,
 	float InDurationSeconds,
@@ -40,10 +42,12 @@ void AAuraVolcanicArcsField::InitializeField(
 	AActor* InSourceActor)
 {
 	BaseHalfLengthCm = FMath::Max(InBaseHalfLengthCm, 1.f);
+	
 	ArcLengthScale = InArcLengthScale;
-
+	ArcBowOffsetCm = FMath::Max(InArcBowOffsetCm, 0.f);
 	ArcCollisionRadiusCm = FMath::Max(InArcCollisionRadiusCm, 1.f);
-
+	
+	IntersectionLocal = InIntersectionLocal;
 	IntersectionRadiusCm = FMath::Max(InIntersectionRadiusCm, 1.f);
 
 	DurationSeconds = FMath::Max(InDurationSeconds, 0.01f);
@@ -70,8 +74,7 @@ void AAuraVolcanicArcsField::ClearVisuals()
 	ArcVisualSegments.Reset();
 }
 
-void AAuraVolcanicArcsField::BuildVisualsForPath(
-	const TArray<FVector>& Path)
+void AAuraVolcanicArcsField::BuildVisualsForPath(const TArray<FVector>& Path)
 {
 	if (!ArcSegmentMesh || Path.Num() < 2)
 	{
@@ -87,6 +90,7 @@ void AAuraVolcanicArcsField::BuildVisualsForPath(
 			continue;
 		}
 
+		Segment->SetMobility(EComponentMobility::Movable);
 		Segment->SetupAttachment(GetRootComponent());
 
 		Segment->SetStaticMesh(ArcSegmentMesh);
@@ -130,7 +134,7 @@ void AAuraVolcanicArcsField::BuildVisuals()
 	TArray<FVector> ArcA;
 	TArray<FVector> ArcB;
 
-	FVolcanicArcsGeometry::Build(BaseHalfLengthCm,ArcLengthScale,ArcA,ArcB);
+	FVolcanicArcsGeometry::Build(IntersectionLocal,BaseHalfLengthCm,ArcLengthScale,ArcBowOffsetCm,ArcA,ArcB);
 
 	BuildVisualsForPath(ArcA);
 	BuildVisualsForPath(ArcB);
@@ -177,20 +181,15 @@ void AAuraVolcanicArcsField::BuildCollisionForPath(
 			continue;
 		}
 
+		Capsule->SetMobility(EComponentMobility::Movable);
 		Capsule->SetupAttachment(GetRootComponent());
-
 		Capsule->SetCapsuleSize(ArcCollisionRadiusCm,SegmentLength * 0.5f + ArcCollisionRadiusCm);
-
 		Capsule->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		Capsule->SetCollisionObjectType(ECC_WorldDynamic);
-
 		Capsule->SetCollisionResponseToAllChannels(ECR_Ignore);
 		Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-
 		Capsule->SetGenerateOverlapEvents(true);
-
 		Capsule->OnComponentBeginOverlap.AddDynamic(this,&AAuraVolcanicArcsField::OnArcBeginOverlap);
-
 		Capsule->SetRelativeLocation((Start + End) * 0.5f);
 
 		const FVector Direction = Segment.GetSafeNormal();
@@ -212,7 +211,7 @@ void AAuraVolcanicArcsField::BuildCollision()
 	TArray<FVector> ArcA;
 	TArray<FVector> ArcB;
 
-	FVolcanicArcsGeometry::Build(BaseHalfLengthCm,ArcLengthScale,ArcA,ArcB);
+	FVolcanicArcsGeometry::Build(IntersectionLocal,BaseHalfLengthCm,ArcLengthScale,ArcBowOffsetCm,ArcA,ArcB);
 
 	BuildCollisionForPath(ArcA);
 	BuildCollisionForPath(ArcB);
@@ -284,8 +283,8 @@ void AAuraVolcanicArcsField::ApplyDamageToActor(AActor* OtherActor)
 		return;
 	}
 
-	const bool bInsideIntersection = FVector::Dist2D(OtherActor->GetActorLocation(),GetActorLocation()) <= IntersectionRadiusCm;
-
+	const FVector IntersectionWorld =GetActorTransform().TransformPosition(IntersectionLocal);
+	const bool bInsideIntersection =FVector::Dist2D(OtherActor->GetActorLocation(),IntersectionWorld) <= IntersectionRadiusCm;
 	const FAuraGameplayTags& AuraTags = FAuraGameplayTags::Get();
 
 	for (const TPair<FGameplayTag, float>& Pair : ScaledDamageValues)
@@ -326,4 +325,6 @@ void AAuraVolcanicArcsField::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 
     DOREPLIFETIME(AAuraVolcanicArcsField,BaseHalfLengthCm);
     DOREPLIFETIME(AAuraVolcanicArcsField,ArcLengthScale);
+	DOREPLIFETIME(AAuraVolcanicArcsField,ArcBowOffsetCm);
+	DOREPLIFETIME(AAuraVolcanicArcsField,IntersectionLocal);
 }

@@ -6,6 +6,7 @@
 #include "AbilitySystem/AuraAttributeSet.h"
 #include "AuraGameplayTags.h"
 
+#include "Components/CapsuleComponent.h"
 #include "Character/AuraCharacter.h"
 #include "Magic/UAuraMagicComponent.h"
 #include "Magic/MagicPatternDefinition.h"
@@ -14,6 +15,8 @@
 #include "Player/AuraPlayerController.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/Character.h"
+
 #include "Abilities/GameplayAbility.h"
 
 UAuraVolcanicArcsSpell::UAuraVolcanicArcsSpell()
@@ -129,9 +132,36 @@ void UAuraVolcanicArcsSpell::ActivateAbility(
         ScaledDamageValues.Add(Pair.Key,Pair.Value.GetValueAtLevel(AbilityLevel));
     }
 
-    const FVector Forward = (TargetLocation - Avatar->GetActorLocation()).GetSafeNormal2D();
+    // Calculate the caster's ground position.
+    FVector FieldOrigin = Avatar->GetActorLocation();
+
+    if (const ACharacter* CasterCharacter = Cast<ACharacter>(Avatar))
+    {
+        if (const UCapsuleComponent* Capsule = CasterCharacter->GetCapsuleComponent())
+        {
+            FieldOrigin.Z -= Capsule->GetScaledCapsuleHalfHeight();
+        }
+    }
+
+    // Small vertical offset to prevent visual z-fighting.
+    FieldOrigin.Z += 3.f;
+
+    // The validated cursor position.
+    const FVector TargetPoint = TargetLocation + FVector(0.f, 0.f, 3.f);
+    FVector Forward = (TargetPoint - FieldOrigin).GetSafeNormal2D();
+
+    if (Forward.IsNearlyZero())
+    {
+        Forward = Avatar->GetActorForwardVector().GetSafeNormal2D();
+    }
+
     const FRotator FieldRotation(0.f,Forward.Rotation().Yaw,0.f);
-    const FTransform SpawnTransform(FieldRotation,TargetLocation + FVector(0.f, 0.f, 3.f));
+
+    // The field is spawned at the caster, not at the cursor.
+    const FTransform SpawnTransform(FieldRotation,FieldOrigin);
+
+    // Store the cursor position relative to the field.
+    const FVector IntersectionLocal = SpawnTransform.InverseTransformPosition(TargetPoint);
 
     AAuraVolcanicArcsField* Field = GetWorld()->SpawnActorDeferred<AAuraVolcanicArcsField>(
             VolcanicArcsFieldClass,
@@ -151,6 +181,8 @@ void UAuraVolcanicArcsSpell::ActivateAbility(
     Field->InitializeField(
         BaseHalfLengthCm,
         ArcScale,
+        ArcBowOffsetCm,
+        IntersectionLocal,
         ArcCollisionRadiusCm,
         IntersectionRadiusCm,
         CalculateDurationSeconds(SourceASC),

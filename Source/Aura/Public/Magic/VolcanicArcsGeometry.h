@@ -22,30 +22,137 @@ struct AURA_API FVolcanicArcsGeometry
             T * T * T * P3;
     }
 
-    static void Build(float HalfLengthCm,float LengthScale,TArray<FVector>& OutArcA,TArray<FVector>& OutArcB)
+    static void AppendBezierSegment(
+        const FVector& P0,
+        const FVector& P1,
+        const FVector& P2,
+        const FVector& P3,
+        TArray<FVector>& OutPoints,
+        bool bSkipFirstSample = false)
+    {
+        const int32 FirstSample = bSkipFirstSample ? 1 : 0;
+
+        for (int32 Index = FirstSample;
+             Index <= SamplesPerArc;
+             ++Index)
+        {
+            const float T =
+                static_cast<float>(Index) /
+                static_cast<float>(SamplesPerArc);
+
+            OutPoints.Add(
+                EvaluateBezier(P0, P1, P2, P3, T)
+            );
+        }
+    }
+
+    static void Build(
+        const FVector& IntersectionLocal,
+        float BaseHalfLengthCm,
+        float ArcLengthScale,
+        float ArcBowOffsetCm,
+        TArray<FVector>& OutArcA,
+        TArray<FVector>& OutArcB)
     {
         OutArcA.Reset();
         OutArcB.Reset();
 
-        const float L = FMath::Max(1.f,HalfLengthCm * LengthScale);
+        const float Distance =
+            IntersectionLocal.Size2D();
 
-        // Arc A: first diagonal curve.
-        const FVector E1(L, L * 0.45f, 0.f);
-        const FVector C1(L * 0.45f, -L * 0.20f, 0.f);
-
-        // Arc B: mirrored diagonal curve.
-        const FVector E2(L, -L * 0.45f, 0.f);
-        const FVector C2(L * 0.45f, L * 0.20f, 0.f);
-
-        for (int32 Index = 0; Index <= SamplesPerArc; ++Index)
+        if (Distance <= KINDA_SMALL_NUMBER)
         {
-            const float T = static_cast<float>(Index) /static_cast<float>(SamplesPerArc);
-            const FVector PointA = EvaluateBezier(-E1,-C1,C1,E1,T);
-            const FVector PointB = EvaluateBezier(-E2,-C2,C2,E2,T);
-
-            OutArcA.Add(PointA);
-            OutArcB.Add(PointB);
+            return;
         }
+
+        const FVector Direction =
+            IntersectionLocal.GetSafeNormal2D();
+
+        const FVector Side(
+            -Direction.Y,
+             Direction.X,
+             0.f
+        );
+
+        const float Bow =
+            FMath::Max(ArcBowOffsetCm, 0.f);
+
+        const float SafeScale =
+            FMath::Clamp(ArcLengthScale, 0.1f, 3.f);
+
+        const float ExtraLength =
+            FMath::Max(BaseHalfLengthCm, 1.f) *
+            SafeScale;
+
+        // Tangent length controls the shape around the intersection.
+        // It does not change the width of the mesh.
+        const float ForwardTangentLength =
+            FMath::Min(Distance * 0.20f, 120.f);
+
+        const float SideTangentLength =
+            FMath::Min(Bow * 0.35f, Distance * 0.15f);
+
+        const FVector Origin = FVector::ZeroVector;
+
+        const FVector Intersection =
+            IntersectionLocal;
+
+        auto BuildPath =
+            [&](float SideSign, TArray<FVector>& OutPath)
+        {
+            const FVector Tangent =
+                Direction * ForwardTangentLength +
+                Side * (SideTangentLength * SideSign);
+
+            // First curve:
+            // Character -> cursor intersection.
+            const FVector P0 = Origin;
+
+            const FVector P1 =
+                Intersection * 0.30f +
+                Side * (Bow * SideSign);
+
+            const FVector P2 =
+                Intersection - Tangent;
+
+            const FVector P3 =
+                Intersection;
+
+            AppendBezierSegment(
+                P0, P1, P2, P3,
+                OutPath
+            );
+
+            // Second curve:
+            // Cursor intersection -> extended arc end.
+            const FVector Q0 = Intersection;
+
+            const FVector Q1 = Intersection + Tangent;
+
+            const FVector Q2 =
+                Intersection +
+                Direction * (ExtraLength * 0.70f) +
+                Side * (Bow * SideSign);
+
+            const FVector Q3 =
+                Intersection +
+                Direction * ExtraLength +
+                Side * (Bow * 0.50f * SideSign);
+
+            // Skip first point because Q0 is the previous segment's end.
+            AppendBezierSegment(
+                Q0, Q1, Q2, Q3,
+                OutPath,
+                true
+            );
+        };
+
+        // Two arcs cross at the cursor intersection.
+        // Their lateral directions are mirrored.
+        BuildPath(1.f, OutArcA);
+        BuildPath(-1.f, OutArcB);
     }
+
     static float CalculateLengthScale(float DistanceCm,float MaxRangeCm,float MinScale,float MaxScale);
+    
 };
