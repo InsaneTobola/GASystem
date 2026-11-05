@@ -126,6 +126,26 @@ bool UAuraGameplayAbility::CheckCooldown(const FGameplayAbilitySpecHandle Handle
         return false;
     }
 
+    // Block other spells that belong to the same magic element.
+    const FGameplayTag CooldownGroupTag = AbilityCooldownTag.RequestDirectParent();
+    const FGameplayTag MagicCooldownRootTag = FGameplayTag::RequestGameplayTag(
+        FName("Cooldown.Magic"),
+        false
+    );
+
+    if (CooldownGroupTag.IsValid() &&
+        CooldownGroupTag != MagicCooldownRootTag &&
+        CooldownGroupTag.MatchesTag(MagicCooldownRootTag) &&
+        ASC->HasMatchingGameplayTag(CooldownGroupTag))
+    {
+        if (OptionalRelevantTags)
+        {
+            OptionalRelevantTags->AddTag(FAuraGameplayTags::Get().Ability_Fail_Cooldown);
+        }
+
+        return false;
+    }
+
     const float Duration = FMath::Max(0.f,CooldownDuration.GetValueAtLevel(GetAbilityLevel(Handle, ActorInfo)));
 
     // Zero means no cooldown.
