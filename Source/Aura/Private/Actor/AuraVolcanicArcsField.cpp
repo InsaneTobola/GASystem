@@ -159,8 +159,7 @@ void AAuraVolcanicArcsField::ClearCollision()
 	ArcCollisionCapsules.Reset();
 }
 
-void AAuraVolcanicArcsField::BuildCollisionForPath(
-	const TArray<FVector>& Path)
+void AAuraVolcanicArcsField::BuildCollisionForPath(const TArray<FVector>& Path)
 {
 	if (Path.Num() < 2)
 	{
@@ -202,7 +201,9 @@ void AAuraVolcanicArcsField::BuildCollisionForPath(
 		const FVector Direction = Segment.GetSafeNormal();
 		const FQuat Rotation = FQuat::FindBetweenNormals(FVector::UpVector,Direction);
 
-		Capsule->SetRelativeRotation(Rotation);
+		const FVector CollisionCenter = (Start + End) * 0.5f + FVector(0.f, 0.f, 90.f);
+
+		Capsule->SetRelativeLocation(CollisionCenter);
 
 		AddInstanceComponent(Capsule);
 		Capsule->RegisterComponent();
@@ -223,7 +224,20 @@ void AAuraVolcanicArcsField::BuildCollision()
 	BuildCollisionForPath(ArcA);
 	BuildCollisionForPath(ArcB);
 
+	AuraMagicDebugPrint(
+	   FString::Printf(
+		   TEXT("VOLCANIC FIELD: Authority=%d Capsules=%d DamageEffect=%s"),
+		   HasAuthority() ? 1 : 0,
+		   ArcCollisionCapsules.Num(),
+		   *GetNameSafe(DamageEffectClass.Get())
+	   ),
+	   FColor::Cyan,
+	   5.f
+   );
+	
 	// Process actors already overlapping when the field appears.
+	int32 InitialOverlapCount = 0;
+
 	for (UCapsuleComponent* Capsule : ArcCollisionCapsules)
 	{
 		if (!IsValid(Capsule))
@@ -231,18 +245,49 @@ void AAuraVolcanicArcsField::BuildCollision()
 			continue;
 		}
 
+		Capsule->UpdateOverlaps();
+
 		TArray<AActor*> OverlappingActors;
+
 		Capsule->GetOverlappingActors(OverlappingActors);
+
+		InitialOverlapCount += OverlappingActors.Num();
 
 		for (AActor* Actor : OverlappingActors)
 		{
+			AuraMagicDebugPrint(
+				FString::Printf(
+					TEXT("VOLCANIC FIELD: Initial candidate=%s"),
+					*GetNameSafe(Actor)
+				),
+				FColor::Yellow
+			);
+
 			ApplyDamageToActor(Actor);
 		}
 	}
+
+	AuraMagicDebugPrint(
+		FString::Printf(
+			TEXT("VOLCANIC FIELD: Initial overlap candidates=%d"),
+			InitialOverlapCount
+		),
+		FColor::Green,
+		5.f
+	);
 }
 
 void AAuraVolcanicArcsField::OnArcBeginOverlap(UPrimitiveComponent* OverlappedComponent,AActor* OtherActor,UPrimitiveComponent* OtherComp,int32 OtherBodyIndex,bool bFromSweep,const FHitResult& SweepResult)
 {
+	AuraMagicDebugPrint(
+	   FString::Printf(
+		   TEXT("VOLCANIC FIELD: Overlap event with %s | Component=%s"),
+		   *GetNameSafe(OtherActor),
+		   *GetNameSafe(OtherComp)
+	   ),
+	   FColor::Yellow
+   );
+	
 	ApplyDamageToActor(OtherActor);
 }
 
@@ -275,6 +320,16 @@ void AAuraVolcanicArcsField::ApplyDamageToActor(AActor* OtherActor)
 		!IsValid(TargetASC) ||
 		!DamageEffectClass)
 	{
+		AuraMagicDebugPrint(
+	   FString::Printf(
+		   TEXT("VOLCANIC FIELD ERROR: SourceASC=%d TargetASC=%d DamageEffect=%s"),
+		   IsValid(SourceASC) ? 1 : 0,
+		   IsValid(TargetASC) ? 1 : 0,
+		   *GetNameSafe(DamageEffectClass.Get())
+	   ),
+	   FColor::Red,
+	   6.f
+   );
 		return;
 	}
 
@@ -287,6 +342,16 @@ void AAuraVolcanicArcsField::ApplyDamageToActor(AActor* OtherActor)
 
 	if (!Spec.IsValid() || !Spec.Data.IsValid())
 	{
+		AuraMagicDebugPrint(
+	FString::Printf(
+		TEXT("VOLCANIC FIELD: Applying %s to %s | DamageEntries=%d"),
+		*GetNameSafe(DamageEffectClass.Get()),
+		*GetNameSafe(OtherActor),
+		ScaledDamageValues.Num()
+	),
+	FColor::Green,
+	5.f
+);
 		return;
 	}
 
