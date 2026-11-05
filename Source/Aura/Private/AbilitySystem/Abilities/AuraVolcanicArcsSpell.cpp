@@ -25,28 +25,6 @@ UAuraVolcanicArcsSpell::UAuraVolcanicArcsSpell()
 	// are inherited from UAuraAreaSpell.
 }
 
-void UAuraVolcanicArcsSpell::RejectVolcanicArcsCast(const FGameplayAbilityActorInfo* ActorInfo) const
-{
-	AAuraCharacter* Character = ActorInfo? Cast<AAuraCharacter>(ActorInfo->AvatarActor.Get()): nullptr;
-
-	if (IsValid(Character) && IsValid(Character->MagicComponent))
-	{
-		Character->MagicComponent->ClearPendingCast();
-	}
-
-	AAuraPlayerController* PC = ActorInfo? Cast<AAuraPlayerController>(ActorInfo->PlayerController.Get()): nullptr;
-
-	if (!IsValid(PC) && IsValid(Character))
-	{
-		PC = Cast<AAuraPlayerController>(Character->GetController());
-	}
-
-	if (IsValid(PC))
-	{
-		PC->ClientMagicTargetRejected();
-	}
-}
-
 void UAuraVolcanicArcsSpell::ActivateAbility(
     const FGameplayAbilitySpecHandle Handle,
     const FGameplayAbilityActorInfo* ActorInfo,
@@ -66,7 +44,7 @@ void UAuraVolcanicArcsSpell::ActivateAbility(
         !VolcanicArcsFieldClass ||
         !DamageEffectClass)
     {
-        RejectVolcanicArcsCast(ActorInfo);
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
@@ -77,7 +55,7 @@ void UAuraVolcanicArcsSpell::ActivateAbility(
 
     if (!Character->MagicComponent->ConsumePendingCast(PatternId,TargetLocation,&ArcScale))
     {
-        RejectVolcanicArcsCast(ActorInfo);
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
@@ -86,7 +64,7 @@ void UAuraVolcanicArcsSpell::ActivateAbility(
 
     if (!IsValid(Pattern) || Pattern->SkillAbilityClass != GetClass() || Pattern->Element != EMagicElement::Fire)
     {
-        RejectVolcanicArcsCast(ActorInfo);
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
@@ -95,21 +73,21 @@ void UAuraVolcanicArcsSpell::ActivateAbility(
 
     if (!FireDamageTag.IsValid() || !DamageTypes.Contains(FireDamageTag))
     {
-        RejectVolcanicArcsCast(ActorInfo);
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
 
     if (!FMath::IsFinite(ArcScale) || ArcScale < MinArcLengthScale || ArcScale > MaxArcLengthScale)
     {
-        RejectVolcanicArcsCast(ActorInfo);
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
 
     if (FVector::Dist2D(Avatar->GetActorLocation(),TargetLocation) > GetMaxRangeCm())
     {
-        RejectVolcanicArcsCast(ActorInfo);
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
@@ -118,7 +96,7 @@ void UAuraVolcanicArcsSpell::ActivateAbility(
     // Commit mana cost and cooldown now.
     if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
     {
-        RejectVolcanicArcsCast(ActorInfo);
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
@@ -126,11 +104,7 @@ void UAuraVolcanicArcsSpell::ActivateAbility(
     const int32 AbilityLevel = GetAbilityLevel();
 
     TMap<FGameplayTag, float> ScaledDamageValues;
-
-    for (const TPair<FGameplayTag, FScalableFloat>& Pair : DamageTypes)
-    {
-        ScaledDamageValues.Add(Pair.Key,Pair.Value.GetValueAtLevel(AbilityLevel));
-    }
+    BuildScaledDamageValues(AbilityLevel, ScaledDamageValues);
 
     // Calculate the caster's ground position.
     FVector FieldOrigin = Avatar->GetActorLocation();
@@ -173,7 +147,7 @@ void UAuraVolcanicArcsSpell::ActivateAbility(
 
     if (!IsValid(Field))
     {
-        RejectVolcanicArcsCast(ActorInfo);
+        RejectMagicCast(ActorInfo);
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }

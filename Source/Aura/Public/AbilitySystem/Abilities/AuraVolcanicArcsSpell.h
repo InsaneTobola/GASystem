@@ -71,7 +71,5 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Volcanic Arcs")
 	float ArcBowOffsetCm = 90.f;
-private:
 
-	void RejectVolcanicArcsCast(const FGameplayAbilityActorInfo* ActorInfo) const;
 };

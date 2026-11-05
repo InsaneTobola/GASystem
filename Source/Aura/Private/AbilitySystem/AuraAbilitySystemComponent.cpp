@@ -14,21 +14,54 @@ void UAuraAbilitySystemComponent::AbilityActorInfoSet()
 
 void UAuraAbilitySystemComponent::AddCharacterAbilities(const TArray<TSubclassOf<UGameplayAbility>>& StartupAbilities)
 {
-	for (const TSubclassOf<UGameplayAbility> AbilityClass : StartupAbilities)
+	for (const TSubclassOf<UGameplayAbility>& AbilityClass : StartupAbilities)
 	{
-		FGameplayAbilitySpec AbilitySpec = FGameplayAbilitySpec(AbilityClass, 1);
-		if (const UAuraGameplayAbility* AuraAbility = Cast<UAuraGameplayAbility>(AbilitySpec.Ability))
+		if (!AbilityClass)
 		{
-			AbilitySpec.GetDynamicSpecSourceTags().AddTag(AuraAbility->StartupInputTag);
-			GiveAbility(AbilitySpec);
+			UE_LOG(LogTemp, Error, TEXT("StartupAbilities contains an empty class entry."));
+			continue;
 		}
+
+		FGameplayAbilitySpec AbilitySpec = FGameplayAbilitySpec(AbilityClass, 1);
+		const UAuraGameplayAbility* AuraAbility =
+			Cast<UAuraGameplayAbility>(AbilitySpec.Ability);
+
+		if (!AuraAbility)
+		{
+			UE_LOG(
+				LogTemp,
+				Error,
+				TEXT("Startup ability %s does not inherit from UAuraGameplayAbility."),
+				*GetNameSafe(AbilityClass.Get())
+			);
+			continue;
+		}
+
+		if (!AuraAbility->StartupInputTag.IsValid())
+		{
+			UE_LOG(
+				LogTemp,
+				Warning,
+				TEXT("Startup ability %s has no StartupInputTag."),
+				*GetNameSafe(AbilityClass.Get())
+			);
+		}
+
+		AbilitySpec.GetDynamicSpecSourceTags().AddTag(AuraAbility->StartupInputTag);
+		GiveAbility(AbilitySpec);
 	}
 }
 
 void UAuraAbilitySystemComponent::AddCharacterPassiveAbilities(const TArray<TSubclassOf<UGameplayAbility>>& StartupPassiveAbilities)
 {
-	for (const TSubclassOf<UGameplayAbility> AbilityClass : StartupPassiveAbilities)
+	for (const TSubclassOf<UGameplayAbility>& AbilityClass : StartupPassiveAbilities)
 	{
+		if (!AbilityClass)
+		{
+			UE_LOG(LogTemp, Error, TEXT("StartupPassiveAbilities contains an empty class entry."));
+			continue;
+		}
+
 		FGameplayAbilitySpec AbilitySpec = FGameplayAbilitySpec(AbilityClass, 1);
 		GiveAbilityAndActivateOnce(AbilitySpec);
 	}

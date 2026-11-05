@@ -60,19 +60,6 @@ void UAuraSelfCastSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle
         return;
     }
 
-    if (!SelfGameplayEffectClass)
-    {
-        UE_LOG(
-            LogTemp,
-            Error,
-            TEXT("[MagicSelfCast] SelfGameplayEffectClass is not assigned.")
-        );
-
-        NotifyClientResult(false);
-        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-        return;
-    }
-
     UGameplayEffect* EffectCDO =
         SelfGameplayEffectClass->GetDefaultObject<UGameplayEffect>();
 
@@ -95,8 +82,12 @@ void UAuraSelfCastSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle
     ContextHandle.SetAbility(this);
     ContextHandle.AddSourceObject(GetAvatarActorFromActorInfo());
 
-    const int32 AbilityLevel =GetAbilityLevel(Handle, ActorInfo);
-    const FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(SelfGameplayEffectClass,GetAbilityLevel(),ContextHandle);
+    const int32 AbilityLevel = GetAbilityLevel(Handle, ActorInfo);
+    const FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+        SelfGameplayEffectClass,
+        AbilityLevel,
+        ContextHandle
+    );
     
     if (!SpecHandle.IsValid() || !SpecHandle.Data.IsValid())
     {

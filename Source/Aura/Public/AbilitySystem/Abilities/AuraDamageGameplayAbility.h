@@ -20,4 +20,14 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Combat")
 	TMap<FGameplayTag, FScalableFloat> DamageTypes;
+
+	/*
+	 * Core Mechanisms
+	 */
+
+	// Damage
+	void BuildScaledDamageValues(
+		int32 AbilityLevel,
+		TMap<FGameplayTag, float>& OutDamageValues
+	) const;
 };

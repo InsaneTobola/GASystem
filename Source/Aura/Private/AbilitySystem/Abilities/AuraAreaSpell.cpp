@@ -201,11 +201,7 @@ void UAuraAreaSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
     
     const int32 AbilityLevel = GetAbilityLevel();
     TMap<FGameplayTag, float> ScaledDamageValues;
-
-    for (const TPair<FGameplayTag, FScalableFloat>& Pair : DamageTypes)
-    {
-        ScaledDamageValues.Add(Pair.Key,Pair.Value.GetValueAtLevel(AbilityLevel));
-    }
+    BuildScaledDamageValues(AbilityLevel, ScaledDamageValues);
     AuraMagicDebugPrint(
         FString::Printf(
             TEXT("AREA SPELL: DamageEffect=%s | Damage entries=%d | AbilityLevel=%d"),
