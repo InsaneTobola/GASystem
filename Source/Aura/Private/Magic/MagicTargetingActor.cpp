@@ -304,7 +304,8 @@ void AAuraMagicTargetingActor::InitializeVolcanicArcsTargeting(APlayerController
     float InDefaultScale,
     float InMinScale,
     float InMaxScale,
-    float InArcBowOffsetCm)
+    float InArcBowOffsetCm,
+    float InArcWidthCm)
 {
     OwningPlayerController = InPlayerController;
     Caster = InCaster;
@@ -318,7 +319,7 @@ void AAuraMagicTargetingActor::InitializeVolcanicArcsTargeting(APlayerController
 
     ArcLengthScale = FMath::Clamp(InDefaultScale,MinArcLengthScale,MaxArcLengthScale);
     ArcBowOffsetCm = FMath::Max(InArcBowOffsetCm, 0.f);
-    
+    ArcWidthCm = FMath::Max(InArcWidthCm, 1.f);
     bVolcanicArcsMode = true;
 
     AreaMesh->SetVisibility(false);
@@ -383,6 +384,10 @@ void AAuraMagicTargetingActor::EnsureArcPreviewComponents()
 
     ArcPreviewSegments.Reset();
 
+    const float MeshBaseWidthCm = ArcSegmentMesh->GetBounds().BoxExtent.Y * 2.f;
+    const float WidthScale = ArcWidthCm / FMath::Max(MeshBaseWidthCm, KINDA_SMALL_NUMBER);
+    const FVector2D ArcCrossSectionScale(WidthScale,1.f);
+    
     for (int32 Index = 0; Index < RequiredSegments; ++Index)
     {
         USplineMeshComponent* Segment = NewObject<USplineMeshComponent>(this);
@@ -398,8 +403,8 @@ void AAuraMagicTargetingActor::EnsureArcPreviewComponents()
         Segment->SetForwardAxis(ESplineMeshAxis::X);
         Segment->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         Segment->SetCastShadow(false);
-        Segment->SetStartScale(FVector2D(1.f, 1.f));
-        Segment->SetEndScale(FVector2D(1.f, 1.f));
+        Segment->SetStartScale(ArcCrossSectionScale);
+        Segment->SetEndScale(ArcCrossSectionScale);
 
         if (DynamicArcPreviewMaterial)
         {
@@ -426,7 +431,11 @@ void AAuraMagicTargetingActor::UpdateArcPreview()
     TArray<FVector> ArcB;
 
     FVolcanicArcsGeometry::Build(CurrentIntersectionLocal,ArcHalfLengthCm,ArcLengthScale,ArcBowOffsetCm,ArcA,ArcB);
-
+    
+    const float MeshBaseWidthCm =ArcSegmentMesh->GetBounds().BoxExtent.Y * 2.f;
+    const float WidthScale = ArcWidthCm / FMath::Max(MeshBaseWidthCm, KINDA_SMALL_NUMBER);
+    const FVector2D ArcCrossSectionScale(WidthScale,1.f);
+    
     int32 SegmentIndex = 0;
 
     auto UpdatePath = [&](const TArray<FVector>& Path)
@@ -450,8 +459,8 @@ void AAuraMagicTargetingActor::UpdateArcPreview()
             const FVector StartTangent = Index == 0? End - Start: (Path[Index + 1] - Path[Index - 1]) * 0.5f;
             const FVector EndTangent = Index + 2 >= Path.Num()? End - Start: (Path[Index + 2] - Path[Index]) * 0.5f;
 
-            Segment->SetStartScale(FVector2D(1.f, 1.f));
-            Segment->SetEndScale(FVector2D(1.f, 1.f));
+            Segment->SetStartScale(ArcCrossSectionScale);
+            Segment->SetEndScale(ArcCrossSectionScale);
             Segment->SetStartAndEnd(Start,StartTangent,End,EndTangent,true);
             Segment->SetVisibility(bHasTarget);
         }

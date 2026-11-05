@@ -38,6 +38,11 @@ public:
 	{
 		return ArcBowOffsetCm;
 	}
+	
+	float GetArcWidthCm() const
+	{
+		return ArcWidthCm;
+	}
 
 protected:
 
@@ -59,7 +64,7 @@ protected:
 	float MaxArcLengthScale = 1.4f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Volcanic Arcs")
-	float ArcCollisionRadiusCm = 35.f;
+	float ArcWidthCm = 12.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Volcanic Arcs")
 	float IntersectionRadiusCm = 65.f;

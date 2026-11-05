@@ -183,7 +183,7 @@ void UAuraVolcanicArcsSpell::ActivateAbility(
         ArcScale,
         ArcBowOffsetCm,
         IntersectionLocal,
-        ArcCollisionRadiusCm,
+        ArcWidthCm,
         IntersectionRadiusCm,
         CalculateDurationSeconds(SourceASC),
         DamageEffectClass,

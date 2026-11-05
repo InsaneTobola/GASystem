@@ -28,7 +28,7 @@ public:
 
 	FVector GetMagicTargetLocation() const;
 
-	void InitializeVolcanicArcsTargeting(APlayerController* InPlayerController,AActor* InCaster,float InMaxRangeCm,float InBaseHalfLengthCm,float InDefaultScale,float InMinScale,float InMaxScale,float InArcBowOffsetCm);
+	void InitializeVolcanicArcsTargeting(APlayerController* InPlayerController,AActor* InCaster,float InMaxRangeCm,float InBaseHalfLengthCm,float InDefaultScale,float InMinScale,float InMaxScale,float InArcBowOffsetCm,float InArcWidthCm);
 	
 protected:
 	virtual void BeginPlay() override;
@@ -89,7 +89,7 @@ private:
 	float ArcHalfLengthCm = 250.f;
 
 	float ArcLengthScale = 1.f;
-
+	float ArcWidthCm = 12.f;
 	float MinArcLengthScale = 0.7f;
 
 	float MaxArcLengthScale = 1.4f;

@@ -32,7 +32,7 @@ void AAuraVolcanicArcsField::InitializeField(
 	float InArcLengthScale,
 	float InArcBowOffsetCm,
 	const FVector& InIntersectionLocal,
-	float InArcCollisionRadiusCm,
+	float InArcWidthCm,
 	float InIntersectionRadiusCm,
 	float InDurationSeconds,
 	TSubclassOf<UGameplayEffect> InDamageEffectClass,
@@ -45,7 +45,7 @@ void AAuraVolcanicArcsField::InitializeField(
 	
 	ArcLengthScale = InArcLengthScale;
 	ArcBowOffsetCm = FMath::Max(InArcBowOffsetCm, 0.f);
-	ArcCollisionRadiusCm = FMath::Max(InArcCollisionRadiusCm, 1.f);
+	InArcWidthCm = FMath::Max(InArcWidthCm, 1.f);
 	
 	IntersectionLocal = InIntersectionLocal;
 	IntersectionRadiusCm = FMath::Max(InIntersectionRadiusCm, 1.f);
@@ -81,6 +81,12 @@ void AAuraVolcanicArcsField::BuildVisualsForPath(const TArray<FVector>& Path)
 		return;
 	}
 
+	// Read the original mesh width on its local Y axis.
+	const float MeshBaseWidthCm = ArcSegmentMesh->GetBounds().BoxExtent.Y * 2.f;
+	// Convert desired world width into spline mesh cross-section scale.
+	const float WidthScale = ArcWidthCm / FMath::Max(MeshBaseWidthCm, KINDA_SMALL_NUMBER);
+	const FVector2D ArcCrossSectionScale(WidthScale,1.f);
+	
 	for (int32 Index = 0; Index < Path.Num() - 1; ++Index)
 	{
 		USplineMeshComponent* Segment = NewObject<USplineMeshComponent>(this);
@@ -99,8 +105,8 @@ void AAuraVolcanicArcsField::BuildVisualsForPath(const TArray<FVector>& Path)
 		Segment->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Segment->SetCastShadow(false);
 
-		Segment->SetStartScale(FVector2D(1.f, 1.f));
-		Segment->SetEndScale(FVector2D(1.f, 1.f));
+		Segment->SetStartScale(ArcCrossSectionScale);
+		Segment->SetEndScale(ArcCrossSectionScale);
 
 		if (ArcMaterial)
 		{
@@ -168,7 +174,8 @@ void AAuraVolcanicArcsField::BuildCollisionForPath(
 
 		const FVector Segment = End - Start;
 		const float SegmentLength = Segment.Size();
-
+		const float CollisionRadiusCm = ArcWidthCm * 0.5f;
+		
 		if (SegmentLength <= KINDA_SMALL_NUMBER)
 		{
 			continue;
@@ -183,7 +190,7 @@ void AAuraVolcanicArcsField::BuildCollisionForPath(
 
 		Capsule->SetMobility(EComponentMobility::Movable);
 		Capsule->SetupAttachment(GetRootComponent());
-		Capsule->SetCapsuleSize(ArcCollisionRadiusCm,SegmentLength * 0.5f + ArcCollisionRadiusCm);
+		Capsule->SetCapsuleSize(CollisionRadiusCm,SegmentLength * 0.5f + CollisionRadiusCm);
 		Capsule->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		Capsule->SetCollisionObjectType(ECC_WorldDynamic);
 		Capsule->SetCollisionResponseToAllChannels(ECR_Ignore);
@@ -327,4 +334,5 @@ void AAuraVolcanicArcsField::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
     DOREPLIFETIME(AAuraVolcanicArcsField,ArcLengthScale);
 	DOREPLIFETIME(AAuraVolcanicArcsField,ArcBowOffsetCm);
 	DOREPLIFETIME(AAuraVolcanicArcsField,IntersectionLocal);
+	DOREPLIFETIME(AAuraVolcanicArcsField, ArcWidthCm);
 }
