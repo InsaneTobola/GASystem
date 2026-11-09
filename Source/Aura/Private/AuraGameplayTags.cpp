@@ -347,6 +347,10 @@ FString("StartSearch")
 		FName("Status.Knockback"), 
 	FString("Knockback")
 		);
+	GameplayTags.Status_PassiveRegeneration = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Status.PassiveRegeneration"),
+		FString("Passive health and mana regeneration is active")
+		);
 	
 	
 	/*

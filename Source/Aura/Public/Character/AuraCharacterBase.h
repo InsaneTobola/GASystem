@@ -65,8 +65,12 @@ protected:
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Attributes")
 	TSubclassOf<UGameplayEffect> DefaultVitalAttributes;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Attributes|Regeneration")
+	TSubclassOf<UGameplayEffect> DefaultPassiveRegenerationEffect;
 	
 	void ApplyEffectToSelf(TSubclassOf<UGameplayEffect> GameplayEffectClass, float Level) const;
+	void ApplyPassiveRegenerationEffect() const;
 	virtual void InitializeDefaultAttributes() const;
 
 	void AddCharacterAbilities();

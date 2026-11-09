@@ -174,11 +174,75 @@ void AAuraCharacterBase::ApplyEffectToSelf(TSubclassOf<UGameplayEffect> Gameplay
 	ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 }
 
+void AAuraCharacterBase::ApplyPassiveRegenerationEffect() const
+{
+	if (!HasAuthority() || !DefaultPassiveRegenerationEffect)
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
+	if (!IsValid(ASC))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Passive regeneration: AbilitySystemComponent is invalid."));
+		return;
+	}
+
+	const FGameplayTag PassiveRegenerationTag =
+		FAuraGameplayTags::Get().Status_PassiveRegeneration;
+
+	if (!PassiveRegenerationTag.IsValid())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Passive regeneration: Status.PassiveRegeneration tag is not registered."));
+		return;
+	}
+
+	// Prevent duplicate application when the PlayerState ASC is reused.
+	if (ASC->HasMatchingGameplayTag(PassiveRegenerationTag))
+	{
+		return;
+	}
+
+	FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+	ContextHandle.AddSourceObject(this);
+
+	const FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+		DefaultPassiveRegenerationEffect,
+		1.f,
+		ContextHandle
+	);
+
+	if (!SpecHandle.IsValid() || !SpecHandle.Data.IsValid())
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("Passive regeneration: failed to create GameplayEffectSpec for %s."),
+			*GetNameSafe(DefaultPassiveRegenerationEffect.Get())
+		);
+		return;
+	}
+
+	const FActiveGameplayEffectHandle ActiveHandle =
+		ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+
+	if (!ActiveHandle.IsValid())
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("Passive regeneration: failed to apply %s."),
+			*GetNameSafe(DefaultPassiveRegenerationEffect.Get())
+		);
+	}
+}
+
 void AAuraCharacterBase::InitializeDefaultAttributes() const
 {
 	ApplyEffectToSelf(DefaultElementalAttributes, 1.f);
 	ApplyEffectToSelf(DefaultSecondaryAttributes, 1.f);
 	ApplyEffectToSelf(DefaultVitalAttributes, 1.f);
+	ApplyPassiveRegenerationEffect();
 }
 
 void AAuraCharacterBase::AddCharacterAbilities()

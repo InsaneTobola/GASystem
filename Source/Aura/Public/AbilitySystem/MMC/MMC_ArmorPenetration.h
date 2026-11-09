@@ -22,7 +22,7 @@ public:
 	
 private:
 	
+	FGameplayEffectAttributeCaptureDefinition EarthDef;
 	FGameplayEffectAttributeCaptureDefinition WaterDef;
 	FGameplayEffectAttributeCaptureDefinition AirDef;
-	FGameplayEffectAttributeCaptureDefinition ArmorDef;
 };

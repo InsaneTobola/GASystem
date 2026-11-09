@@ -119,7 +119,38 @@ void UAuraSelfCastSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle
         return;
     }
 
+    bool bEffectApplied = false;
+    const FDelegateHandle ApplyDelegateHandle =
+        ASC->OnGameplayEffectAppliedDelegateToSelf.AddLambda(
+            [EffectCDO, &bEffectApplied](
+                UAbilitySystemComponent*,
+                const FGameplayEffectSpec& AppliedSpec,
+                FActiveGameplayEffectHandle
+            )
+            {
+                if (AppliedSpec.Def == EffectCDO)
+                {
+                    bEffectApplied = true;
+                }
+            }
+        );
+
     ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+    ASC->OnGameplayEffectAppliedDelegateToSelf.Remove(ApplyDelegateHandle);
+
+    if (!bEffectApplied)
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("[MagicSelfCast] GameplayEffect %s was not applied."),
+            *GetNameSafe(SelfGameplayEffectClass.Get())
+        );
+
+        NotifyClientResult(false);
+        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+        return;
+    }
 
     UE_LOG(
         LogTemp,
@@ -130,5 +161,5 @@ void UAuraSelfCastSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle
 
     NotifyClientResult(true);
 
-    EndAbility(Handle,ActorInfo,ActivationInfo,true,false);
+    EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }

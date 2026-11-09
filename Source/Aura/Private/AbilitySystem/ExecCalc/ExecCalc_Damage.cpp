@@ -100,12 +100,6 @@ UExecCalc_Damage::UExecCalc_Damage()
 void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecutionParameters& ExecutionParams,
 	FGameplayEffectCustomExecutionOutput& OutExecutionOutput) const
 {
-	UE_LOG(
-	LogTemp,
-	Warning,
-	TEXT("[ExecCalc_Damage] BUILD_MARKER=ElementalRepair_A")
-);
-	
 	const UAbilitySystemComponent* SourceASC = ExecutionParams.GetSourceAbilitySystemComponent();
 	const UAbilitySystemComponent* TargetASC = ExecutionParams.GetTargetAbilitySystemComponent();
 	
@@ -118,27 +112,16 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 		return;
 	}
 		
-	int32 SourcePlayerLevel = 1.f;
+	int32 SourcePlayerLevel = 1;
 	if (SourceAvatar->Implements<UCombatInterface>())
 	{
 		SourcePlayerLevel = ICombatInterface::Execute_GetPlayerLevel(SourceAvatar);
 	}
-	int32 TargetPlayerLevel = 1.f;
+	int32 TargetPlayerLevel = 1;
 	if (TargetAvatar->Implements<UCombatInterface>())
 	{
 		TargetPlayerLevel = ICombatInterface::Execute_GetPlayerLevel(TargetAvatar);
 	}
-	UE_LOG(
-	LogTemp,
-	Warning,
-	TEXT("[ElementalDebug] SourceASC=%s | SourceAvatar=%s | Fire=%.2f | Water=%.2f | Earth=%.2f | Air=%.2f"),
-	*GetNameSafe(SourceASC),
-	*GetNameSafe(SourceAvatar),
-	SourceASC->GetNumericAttribute(UAuraAttributeSet::GetFireAttribute()),
-	SourceASC->GetNumericAttribute(UAuraAttributeSet::GetWaterAttribute()),
-	SourceASC->GetNumericAttribute(UAuraAttributeSet::GetEarthAttribute()),
-	SourceASC->GetNumericAttribute(UAuraAttributeSet::GetAirAttribute())
-);
 	const FGameplayEffectSpec& Spec = ExecutionParams.GetOwningSpec();
 	const FGameplayTagContainer* SourceTags = Spec.CapturedSourceTags.GetAggregatedTags();
 	const FGameplayTagContainer* TargetTags = Spec.CapturedTargetTags.GetAggregatedTags();
@@ -213,7 +196,7 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 
 			UE_LOG(
 				LogTemp,
-				Warning,
+				Verbose,
 				TEXT("[ExecCalc_Damage] Elemental scaling: Type=%s Power=%.2f Multiplier=%.2f ScaledDamage=%.2f"),
 				*DamageTypeTag.ToString(),
 				ElementalPower,
@@ -225,7 +208,7 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 		{
 			UE_LOG(
 				LogTemp,
-				Warning,
+				Error,
 				TEXT("[ExecCalc_Damage] No primary attribute mapping for %s"),
 				*DamageTypeTag.ToString()
 			);
@@ -240,7 +223,7 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 		
 		UE_LOG(
 	LogTemp,
-	Warning,
+	Verbose,
 	TEXT("[ExecCalc_Damage] Type=%s Raw=%.2f Resistance=%.2f AfterResistance=%.2f"),
 	*Pair.Key.ToString(),
 	RawDamageTypeValue,
@@ -335,7 +318,7 @@ void UExecCalc_Damage::Execute_Implementation(const FGameplayEffectCustomExecuti
 	}
 	UE_LOG(
 	LogTemp,
-	Warning,
+	Verbose,
 	TEXT("[ExecCalc_Damage] FinalDamage=%.2f Target=%s"),
 	Damage,
 	*GetNameSafe(TargetAvatar)

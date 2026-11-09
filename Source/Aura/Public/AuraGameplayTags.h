@@ -102,6 +102,7 @@ public:
 	FGameplayTag Status_Burn;
 	FGameplayTag Status_Frost;
 	FGameplayTag Status_Knockback;
+	FGameplayTag Status_PassiveRegeneration;
 	
 	// SetByCaller data
 	FGameplayTag Data_ManaCost;
