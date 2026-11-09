@@ -101,7 +101,7 @@ void UAuraAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 void UAuraAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
-	Super::PreAttributeBaseChange(Attribute, NewValue);
+	Super::PreAttributeChange(Attribute, NewValue);
 	
 	if (Attribute == GetHealthAttribute())
 	{
@@ -244,9 +244,12 @@ void UAuraAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
                     }
                 }
 
-                FGameplayTagContainer TagContainer;
-                TagContainer.AddTag(FAuraGameplayTags::Get().HitReact);
-                Props.TargetASC->TryActivateAbilitiesByTag(TagContainer);
+                if (IsValid(Props.TargetASC))
+                {
+                    FGameplayTagContainer TagContainer;
+                    TagContainer.AddTag(FAuraGameplayTags::Get().HitReact);
+                    Props.TargetASC->TryActivateAbilitiesByTag(TagContainer);
+                }
             }
             const bool bBlock = UAuraAbilitySystemLibrary::IsBlockedHit(Props.EffectContextHandle);
             const bool bCriticalHit = UAuraAbilitySystemLibrary::IsCriticalHit(Props.EffectContextHandle);
@@ -260,7 +263,9 @@ void UAuraAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 		
 		
 		
-		if (Props.SourceCharacter->Implements<UPlayerInterface>() && Props.SourceCharacter->Implements<UCombatInterface>())
+		if (IsValid(Props.SourceCharacter) &&
+			Props.SourceCharacter->Implements<UPlayerInterface>() &&
+			Props.SourceCharacter->Implements<UCombatInterface>())
 		{
 			const int32 CurrentLevel = ICombatInterface::Execute_GetPlayerLevel(Props.SourceCharacter);
 			const int32 CurrentXP = IPlayerInterface::Execute_GetXP(Props.SourceCharacter);
@@ -291,15 +296,29 @@ void UAuraAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute,
 {
 	Super::PostAttributeChange(Attribute, OldValue, NewValue);
 
-	if (Attribute == GetMaxHealthAttribute() && bTopOffHealth)
+	if (Attribute == GetMaxHealthAttribute())
 	{
-		SetHealth(GetMaxHealth());
-		bTopOffHealth = false;
+		if (bTopOffHealth)
+		{
+			SetHealth(GetMaxHealth());
+			bTopOffHealth = false;
+		}
+		else
+		{
+			SetHealth(FMath::Clamp(GetHealth(), 0.f, FMath::Max(GetMaxHealth(), 0.f)));
+		}
 	}
-	if (Attribute == GetMaxManaAttribute() && bTopOffMana)
+	if (Attribute == GetMaxManaAttribute())
 	{
-		SetMana(GetMaxMana());
-		bTopOffMana = false;
+		if (bTopOffMana)
+		{
+			SetMana(GetMaxMana());
+			bTopOffMana = false;
+		}
+		else
+		{
+			SetMana(FMath::Clamp(GetMana(), 0.f, FMath::Max(GetMaxMana(), 0.f)));
+		}
 	}
 	
 	if (Attribute != GetSpeedAttribute() && Attribute != GetSlowAttribute() && Attribute != GetStunAttribute())
@@ -322,6 +341,11 @@ void UAuraAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute,
 
 void UAuraAttributeSet::SendXPEvent(const FEffectProperties& Props)
 {
+	if (!IsValid(Props.SourceCharacter) || !IsValid(Props.TargetCharacter))
+	{
+		return;
+	}
+
 	if (Props.TargetCharacter->Implements<UCombatInterface>())
 	{
 		const int32 TargetLevel = ICombatInterface::Execute_GetPlayerLevel(Props.TargetCharacter);

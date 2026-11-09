@@ -46,9 +46,6 @@ protected:
     float BaseDurationSeconds = 0.5f;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Duration")
-    float SecondsPerDamageOnTimePoint = 0.05f;
-
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Duration")
     float MaxDurationSeconds = 5.f;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Targeting")

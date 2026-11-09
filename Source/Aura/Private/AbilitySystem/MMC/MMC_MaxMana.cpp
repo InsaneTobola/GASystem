@@ -28,14 +28,14 @@ float UMMC_MaxMana::CalculateBaseMagnitude_Implementation(const FGameplayEffectS
 	GetCapturedAttributeMagnitude(WaterDef, Spec, EvaluationParameters, Water );
 	Water = FMath::Max<float>(Water, 0.f);
 	
-	int32 PlayerLevel = 1.f;
+	int32 PlayerLevel = 1;
 	
-	if (Spec.GetContext().GetSourceObject()->Implements<UCombatInterface>())
+	UObject* SourceObject = Spec.GetContext().GetSourceObject();
+
+	if (IsValid(SourceObject) && SourceObject->Implements<UCombatInterface>())
 	{
-		PlayerLevel = ICombatInterface::Execute_GetPlayerLevel(Spec.GetContext().GetSourceObject());
+		PlayerLevel = ICombatInterface::Execute_GetPlayerLevel(SourceObject);
 	}
-	
-	ICombatInterface* CombatInterface = Cast<ICombatInterface>(Spec.GetContext(). GetSourceObject());
 	
 	
 	return 120.f + 4.f * Water + 40.0f * PlayerLevel;

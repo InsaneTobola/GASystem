@@ -72,16 +72,13 @@ float UAuraAreaSpell::CalculateAreaRadius(const UAbilitySystemComponent* SourceA
     return Diameter * 0.5f;
 }
 
-float UAuraAreaSpell::CalculateDurationSeconds(const UAbilitySystemComponent* SourceASC) const
+float UAuraAreaSpell::CalculateDurationSeconds(const UAbilitySystemComponent* /*SourceASC*/) const
 {
-    float DamageOnTime = 0.f;
-
-    if (IsValid(SourceASC))
-    {
-        DamageOnTime = SourceASC->GetNumericAttribute(UAuraAttributeSet::GetDamageOnTimeAttribute());
-    }
-
-    return FMath::Clamp(BaseDurationSeconds + FMath::Max(DamageOnTime, 0.f) *FMath::Max(SecondsPerDamageOnTimePoint, 0.f),BaseDurationSeconds,MaxDurationSeconds);
+    return FMath::Clamp(
+        BaseDurationSeconds,
+        0.f,
+        FMath::Max(MaxDurationSeconds, 0.f)
+    );
 }
 
 void UAuraAreaSpell::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
